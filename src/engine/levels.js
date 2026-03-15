@@ -14,6 +14,12 @@ const _Resistor = (typeof Resistor !== 'undefined') ? Resistor : engineModule.Re
 const _LED = (typeof LED !== 'undefined') ? LED : engineModule.LED;
 const _Switch = (typeof Switch !== 'undefined') ? Switch : engineModule.Switch;
 const _Wire = (typeof Wire !== 'undefined') ? Wire : engineModule.Wire;
+const _Capacitor = (typeof Capacitor !== 'undefined') ? Capacitor : engineModule.Capacitor;
+const _Inductor = (typeof Inductor !== 'undefined') ? Inductor : engineModule.Inductor;
+const _Diode = (typeof Diode !== 'undefined') ? Diode : engineModule.Diode;
+const _Transistor = (typeof Transistor !== 'undefined') ? Transistor : engineModule.Transistor;
+const _Transformer = (typeof Transformer !== 'undefined') ? Transformer : engineModule.Transformer;
+const _Potentiometer = (typeof Potentiometer !== 'undefined') ? Potentiometer : engineModule.Potentiometer;
 const _LogicGate = (typeof LogicGate !== 'undefined') ? LogicGate : engineModule.LogicGate;
 const _Circuit = (typeof Circuit !== 'undefined') ? Circuit : engineModule.Circuit;
 const _Capacitor = (typeof Capacitor !== 'undefined') ? Capacitor : engineModule.Capacitor;
@@ -36,368 +42,411 @@ const Difficulty = Object.freeze({
  * Level definitions for the game.
  */
 const LEVELS = [
+  // ===== Beginner Levels (1-3) =====
   {
     id: 1,
-    title: 'The Light Switch',
+    title: 'RC Charging',
     difficulty: Difficulty.BEGINNER,
-    description: 'Connect the battery, switch, and LED to light up the room and unlock the door.',
-    story: 'You wake up in a dark laboratory. A single LED sits on the workbench next to a battery and switch. Light up the room to find the exit!',
-    objectives: ['Connect all components to form a complete circuit', 'Close the switch to light the LED'],
+    description: 'Connect a battery, resistor, capacitor and switch to build an RC charging circuit.',
+    story: 'You wake up in a dark laboratory. A capacitor needs to charge to power the exit sign. Build the RC charging circuit and close the switch!',
+    objectives: [
+      'Wire all four components together to form a complete circuit',
+      'Close the switch to start charging the capacitor',
+    ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: '1kΩ' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.0001, voltageRating: 50 }, label: '100µF' },
       { type: _ComponentType.SWITCH, props: { closed: false } },
-      { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 350 } },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      const allLit = leds.length > 0 && leds.every((led) => led.isLit());
-      if (!allLit) return { passed: false, message: 'The LED is not lit. Check your connections.' };
-      return { passed: true, message: 'The LED lights up! The door unlocks.' };
+      const comps = [...circuit.components.values()];
+      const hasBattery = comps.some((c) => c.type === _ComponentType.BATTERY);
+      const hasResistor = comps.some((c) => c.type === _ComponentType.RESISTOR);
+      const hasCapacitor = comps.some((c) => c instanceof _Capacitor);
+      const hasSwitch = comps.some((c) => c.type === _ComponentType.SWITCH);
+      if (!hasBattery || !hasResistor || !hasCapacitor || !hasSwitch) {
+        return { passed: false, message: 'Missing components. You need: Battery, Resistor, Capacitor, Switch.' };
+      }
+      const sw = comps.find((c) => c.type === _ComponentType.SWITCH);
+      if (!sw.isActive()) {
+        return { passed: false, message: 'Close the switch to start charging the capacitor!' };
+      }
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'Components are not wired together. Use the Wire tool to connect them!' };
+      }
+      return { passed: true, message: 'RC Circuit assembled! The capacitor charges through the resistor. Exit sign powers up!' };
     },
     hints: [
-      'A circuit needs a complete loop for current to flow.',
-      'Connect the battery to the resistor, then to the LED, and back to the battery.',
-      'Don\'t forget to close the switch!',
+      'Wire each component\'s terminals to the next component to form a loop.',
+      'The capacitor connects between the resistor and the battery return.',
+      'Close the switch (double-click) after connecting all components.',
     ],
     maxScore: 100,
-    timeBonus: 60,
+    timeBonus: 90,
   },
   {
     id: 2,
-    title: 'Ohm\'s Challenge',
+    title: 'Diode Logic',
     difficulty: Difficulty.BEGINNER,
-    description: 'Select the correct resistor value so the current through the circuit is exactly 0.02A.',
-    story: 'The door panel displays a target current: 20mA. Choose the right resistor to match it!',
-    objectives: ['Use Ohm\'s Law (V = I × R) to calculate the needed resistance', 'Target current: 0.02A with a 9V battery'],
+    description: 'Wire a diode and LED circuit so that current only flows in the correct direction.',
+    story: 'The door panel requires a specific current direction. A diode controls which way electrons flow. Orient the diode correctly to light the LED and unlock the door!',
+    objectives: [
+      'Connect Battery, Resistor, Diode, and LED with wires',
+      'Ensure the diode is forward-biased so current lights the LED',
+    ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 330 }, label: '330Ω' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 0.02, forwardBiased: true }, label: 'Diode' },
       { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: '100Ω' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 350 }, label: '350Ω' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: '1000Ω' },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete.' };
-      const targetCurrent = 0.02;
-      const tolerance = 0.005;
-      if (Math.abs(result.totalCurrent - targetCurrent) <= tolerance) {
-        return { passed: true, message: `Current is ${(result.totalCurrent * 1000).toFixed(1)}mA. Door unlocked!` };
+      const comps = [...circuit.components.values()];
+      const hasDiode = comps.some((c) => c instanceof _Diode);
+      const leds = comps.filter((c) => c instanceof _LED);
+      if (!hasDiode || leds.length === 0) {
+        return { passed: false, message: 'You need a Diode and an LED in the circuit.' };
       }
-      return {
-        passed: false,
-        message: `Current is ${(result.totalCurrent * 1000).toFixed(1)}mA. Target is ${targetCurrent * 1000}mA. Try a different resistor.`,
-      };
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'Components are not fully wired. Connect them all with wires!' };
+      }
+      const result = circuit.simulate();
+      const allLit = leds.every((led) => led.isLit());
+      if (!allLit) {
+        return { passed: false, message: 'LED is not lit. Check the diode orientation — double-click the diode to flip it.' };
+      }
+      return { passed: true, message: 'Diode allows forward current! LED lights up. Door unlocked.' };
     },
     hints: [
-      'Ohm\'s Law: V = I × R, so R = V / I',
-      'The LED has a forward voltage of 2V, leaving 7V across the resistor.',
-      'R = 7V / 0.02A = 350Ω',
+      'A diode only allows current in one direction (anode → cathode).',
+      'Double-click the diode on the board to flip its orientation.',
+      'When forward-biased, the diode has ~0.7V voltage drop.',
     ],
     maxScore: 100,
     timeBonus: 90,
   },
   {
     id: 3,
-    title: 'Diode Direction',
+    title: 'Mixed Series Circuit',
     difficulty: Difficulty.BEGINNER,
-    description: 'Connect a diode in the correct direction to allow current flow and light the LED.',
-    story: 'The lab door has a one-way current valve (diode). Connect it correctly — backwards and no current flows!',
+    description: 'Build a series circuit using five different component types wired together.',
+    story: 'The lab\'s diagnostic panel requires all five component types to be present and connected in a valid series circuit. Assemble the circuit to pass the diagnostic!',
     objectives: [
-      'Place a battery, resistor (330Ω), diode, and LED',
-      'Connect them in series with wires',
-      'The diode must face forward for current to flow',
+      'Place and wire: Battery, Resistor, Capacitor, Diode, and LED',
+      'All components must be connected in one continuous loop',
     ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
       { type: _ComponentType.RESISTOR, props: { resistance: 330 }, label: '330Ω' },
-      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7 } },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.00001, voltageRating: 50 }, label: '10µF' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 0.02, forwardBiased: true }, label: 'Diode' },
       { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const diodes = [...circuit.components.values()].filter((c) => c instanceof _Diode);
-      if (diodes.length === 0) return { passed: false, message: 'Add a diode to the circuit.' };
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete. Connect all components with wires.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      if (leds.length === 0 || !leds.every((l) => l.isLit())) {
-        return { passed: false, message: 'LED is not lit. Check diode direction and wire connections.' };
+      const comps = [...circuit.components.values()];
+      const hasBattery = comps.some((c) => c.type === _ComponentType.BATTERY);
+      const hasResistor = comps.some((c) => c.type === _ComponentType.RESISTOR);
+      const hasCapacitor = comps.some((c) => c instanceof _Capacitor);
+      const hasDiode = comps.some((c) => c instanceof _Diode);
+      const hasLED = comps.some((c) => c instanceof _LED);
+      if (!hasBattery || !hasResistor || !hasCapacitor || !hasDiode || !hasLED) {
+        return { passed: false, message: 'Missing components. Need: Battery, Resistor, Capacitor, Diode, and LED.' };
       }
-      return { passed: true, message: `Diode correctly placed! Current: ${(result.totalCurrent * 1000).toFixed(1)}mA. Door opens!` };
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'All five components must be wired into one connected circuit.' };
+      }
+      return { passed: true, message: 'Mixed series circuit assembled! Diagnostic passes. Proceeding to next room.' };
     },
     hints: [
-      'A diode only allows current in one direction (forward bias).',
-      'Connect: Battery(+) → Resistor → Diode(anode→cathode) → LED → Battery(−).',
-      'The diode has ~0.7V forward voltage drop, adding to circuit resistance.',
+      'Connect components in a chain: Battery → Resistor → Capacitor → Diode → LED → Battery.',
+      'Each component needs two wire connections (one per terminal).',
+      'Make sure the diode is in the forward direction (double-click to flip if needed).',
     ],
     maxScore: 100,
-    timeBonus: 90,
+    timeBonus: 120,
   },
+
+  // ===== Intermediate Levels (4-6) =====
   {
     id: 4,
-    title: 'RC Charging Circuit',
+    title: 'Parallel RC Circuit',
     difficulty: Difficulty.INTERMEDIATE,
-    description: 'Build an RC circuit. Choose the correct resistor to set a 1-second time constant (τ = R × C).',
-    story: 'The lab timer needs a precise 1-second delay. Only an RC circuit can create this timing!',
+    description: 'Build two RC branches in parallel: each branch has its own resistor and capacitor.',
+    story: 'Two timing locks protect the next door. Each lock uses its own RC time constant. Build a parallel RC circuit with two different branches and close the switch!',
     objectives: [
-      'Place a battery, resistor, and capacitor (100μF)',
-      'Connect all components in series with wires',
-      'Target time constant τ = R × C = 1 second → use 10kΩ resistor',
+      'Wire at least 2 Resistors, 2 Capacitors, and a Switch in a parallel configuration',
+      'Both branches must be connected to the same power rails',
     ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
       { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: '1kΩ' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 10000 }, label: '10kΩ' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 100000 }, label: '100kΩ' },
-      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.0001 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 2200 }, label: '2.2kΩ' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.0001, voltageRating: 50 }, label: '100µF' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.000047, voltageRating: 50 }, label: '47µF' },
+      { type: _ComponentType.SWITCH, props: { closed: false } },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const capacitors = [...circuit.components.values()].filter((c) => c instanceof _Capacitor);
-      if (capacitors.length === 0) return { passed: false, message: 'Add a capacitor to the circuit.' };
-      const resistors = [...circuit.components.values()].filter((c) => c.type === _ComponentType.RESISTOR);
-      if (resistors.length === 0) return { passed: false, message: 'Add a resistor to the circuit.' };
-      const batteries = [...circuit.components.values()].filter((c) => c.type === _ComponentType.BATTERY);
-      if (batteries.length === 0) return { passed: false, message: 'Add a battery to the circuit.' };
+      const comps = [...circuit.components.values()];
+      const resistors = comps.filter((c) => c.type === _ComponentType.RESISTOR);
+      const capacitors = comps.filter((c) => c instanceof _Capacitor);
+      const hasSwitch = comps.some((c) => c.type === _ComponentType.SWITCH);
+      if (resistors.length < 2 || capacitors.length < 2 || !hasSwitch) {
+        return { passed: false, message: 'Need at least 2 Resistors, 2 Capacitors, and a Switch.' };
+      }
+      const sw = comps.find((c) => c.type === _ComponentType.SWITCH);
+      if (!sw.isActive()) {
+        return { passed: false, message: 'Close the switch to energize the parallel RC circuit.' };
+      }
       if (!circuit.validateCircuitTopology()) {
-        return { passed: false, message: 'Connect all components with wires.' };
+        return { passed: false, message: 'All components must be wired together in a connected circuit.' };
       }
-      const totalR = resistors.reduce((sum, r) => sum + r.getResistance(), 0);
-      const totalC = capacitors.reduce((sum, c) => sum + c.getCapacitance(), 0);
-      const tau = totalR * totalC;
-      const targetTau = 1.0;
-      if (Math.abs(tau - targetTau) <= 0.1) {
-        return { passed: true, message: `RC circuit built! τ = ${tau.toFixed(2)}s. Timer set correctly!` };
-      }
-      return {
-        passed: false,
-        message: `Time constant τ = R×C = ${tau.toFixed(2)}s. Target is ${targetTau}s. Try a different resistor.`,
-      };
+      return { passed: true, message: 'Parallel RC circuit assembled! Two time constants charge simultaneously. Both locks open!' };
     },
     hints: [
-      'Time constant τ = R × C determines how fast the capacitor charges.',
-      'With C = 100μF = 0.0001F, you need R = 1s / 0.0001F = 10,000Ω (10kΩ).',
-      'Connect: Battery(+) → Resistor → Capacitor → Battery(−).',
-    ],
-    maxScore: 150,
-    timeBonus: 120,
-  },
-  {
-    id: 5,
-    title: 'Transistor Switch',
-    difficulty: Difficulty.INTERMEDIATE,
-    description: 'Use a transistor as an electronic switch. Activate it to allow current to flow through the LED.',
-    story: 'The lab has a remote-controlled door. A transistor acts as the switch — activate its base to open the circuit!',
-    objectives: [
-      'Place battery, resistor (470Ω), NPN transistor, and LED',
-      'Connect all in series with wires',
-      'Double-click the transistor to activate it (turn ON)',
-    ],
-    availableComponents: [
-      { type: _ComponentType.BATTERY, props: { voltage: 9 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 470 }, label: '470Ω' },
-      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', gain: 100 } },
-      { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
-    ],
-    preplacedComponents: [],
-    checkSolution: function (circuit) {
-      const transistors = [...circuit.components.values()].filter((c) => c instanceof _Transistor);
-      if (transistors.length === 0) return { passed: false, message: 'Add a transistor to the circuit.' };
-      if (!transistors.some((t) => t.isActive())) {
-        return { passed: false, message: 'Transistor is off. Double-click it to activate the base!' };
-      }
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete. Connect all components with wires.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      if (leds.length === 0 || !leds.every((l) => l.isLit())) {
-        return { passed: false, message: 'LED is not lit. Check your wire connections.' };
-      }
-      return { passed: true, message: `Transistor switch ON! Current: ${(result.totalCurrent * 1000).toFixed(1)}mA. Door opens!` };
-    },
-    hints: [
-      'A transistor acts like an electrically controlled switch.',
-      'Double-click the transistor component to "apply base current" and turn it ON.',
-      'When ON, current flows: Battery → Resistor → Transistor → LED → Battery.',
-    ],
-    maxScore: 150,
-    timeBonus: 120,
-  },
-  {
-    id: 6,
-    title: 'The Broken Lab',
-    difficulty: Difficulty.INTERMEDIATE,
-    description: 'The circuit is broken — draw wires to reconnect the battery and restore power to the LED.',
-    story: 'This room\'s circuit was damaged in an explosion. The battery is disconnected! Draw wires to fix it.',
-    objectives: [
-      'The resistor and LED are already connected',
-      'Draw a wire from Battery terminal A to the Resistor terminal A',
-      'Draw a wire from Battery terminal B to the LED terminal B',
-    ],
-    availableComponents: [],
-    preplacedComponents: [
-      { type: _ComponentType.BATTERY, id: 'bat1', props: { voltage: 9 }, nodeA: 'n0', nodeB: null },
-      { type: _ComponentType.RESISTOR, id: 'r1', props: { resistance: 350 }, nodeA: 'n1', nodeB: 'n2' },
-      { type: _ComponentType.LED, id: 'led1', props: { forwardVoltage: 2, maxCurrent: 0.02 }, nodeA: 'n2', nodeB: 'n3' },
-    ],
-    checkSolution: function (circuit) {
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit still has broken connections.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      const allLit = leds.length > 0 && leds.every((led) => led.isLit());
-      if (!allLit) return { passed: false, message: 'LED is still not working. Keep debugging!' };
-      return { passed: true, message: 'Circuit repaired! The emergency lights come back on.' };
-    },
-    hints: [
-      'Click a terminal dot (green circle) on one component to start drawing a wire.',
-      'Then click a terminal dot on another component to complete the connection.',
-      'Battery A → Resistor A, and Battery B → LED B.',
+      'Connect both RC branches between the same two nodes (power rails).',
+      'Each branch: Resistor in series with Capacitor between the rails.',
+      'Use the Switch in series with the battery to control the circuit.',
     ],
     maxScore: 150,
     timeBonus: 150,
   },
   {
-    id: 7,
-    title: 'Transistor Amplifier',
-    difficulty: Difficulty.ADVANCED,
-    description: 'Build a transistor amplifier. Choose the correct resistor to achieve a collector current of 15–20mA.',
-    story: 'The lab speaker needs a transistor amplifier to boost the unlock signal. Get the current just right!',
+    id: 5,
+    title: 'Transistor Switch',
+    difficulty: Difficulty.INTERMEDIATE,
+    description: 'Use a transistor as an electronic switch to control an LED.',
+    story: 'The exit requires an electronic switch — not a mechanical one! Use an NPN transistor with proper biasing to switch on the LED and unlock the door.',
     objectives: [
-      'Place battery, one resistor, transistor (NPN), and LED',
-      'Connect with wires, then activate the transistor',
-      'Target collector current: 15–20mA',
+      'Wire Battery, Resistor, NPN Transistor, and LED together',
+      'Activate the transistor (double-click) so it conducts and lights the LED',
     ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: '100Ω' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 470 }, label: '470Ω' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 2000 }, label: '2kΩ' },
-      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', gain: 200 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: '1kΩ (Base)' },
+      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', hFE: 100, conducting: false }, label: 'NPN Transistor' },
       { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const transistors = [...circuit.components.values()].filter((c) => c instanceof _Transistor);
-      if (transistors.length === 0) return { passed: false, message: 'Add a transistor to the circuit.' };
-      if (!transistors.some((t) => t.isActive())) {
-        return { passed: false, message: 'Transistor is off. Double-click it to activate the base!' };
+      const comps = [...circuit.components.values()];
+      const transistors = comps.filter((c) => c instanceof _Transistor);
+      const leds = comps.filter((c) => c instanceof _LED);
+      if (transistors.length === 0 || leds.length === 0) {
+        return { passed: false, message: 'You need an NPN Transistor and an LED in the circuit.' };
+      }
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'All components must be wired together.' };
       }
       const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete. Connect all components with wires.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      if (leds.length === 0 || !leds.every((l) => l.isLit())) {
-        return { passed: false, message: 'LED is not lit. Check your connections.' };
+      const allLit = leds.every((led) => led.isLit());
+      if (!allLit) {
+        return { passed: false, message: 'LED is not lit. Enable the transistor by double-clicking it (simulates base current).' };
       }
-      const targetMin = 0.015;
-      const targetMax = 0.020;
-      if (result.totalCurrent >= targetMin && result.totalCurrent <= targetMax) {
-        return { passed: true, message: `Amplifier tuned! Current: ${(result.totalCurrent * 1000).toFixed(1)}mA. Signal boosted!` };
-      }
-      return {
-        passed: false,
-        message: `Current: ${(result.totalCurrent * 1000).toFixed(1)}mA. Target: 15–20mA. Try the 470Ω resistor.`,
-      };
+      return { passed: true, message: 'Transistor conducting! LED activates. Electronic switch works — door unlocked.' };
     },
     hints: [
-      'The transistor amplifies when its base is activated (double-click).',
-      'Target 15–20mA: choose the resistor using Ohm\'s Law.',
-      'With 9V, 470Ω + transistor(~0.1Ω) + LED(100Ω): I ≈ 9/570 ≈ 16mA.',
+      'A transistor conducts when its base current exceeds a threshold.',
+      'Double-click the transistor to toggle it between conducting and cutoff.',
+      'Connect the resistor to the base to limit base current.',
+    ],
+    maxScore: 150,
+    timeBonus: 150,
+  },
+  {
+    id: 6,
+    title: 'Transistor Amplifier',
+    difficulty: Difficulty.INTERMEDIATE,
+    description: 'Build a transistor amplifier with four bias resistors and a coupling capacitor.',
+    story: 'The security intercom is too quiet — you need to amplify the signal! Build a common-emitter amplifier circuit to boost the audio and trigger the door release.',
+    objectives: [
+      'Wire 2 Batteries, 4 Resistors, 1 NPN Transistor, and 1 Capacitor',
+      'All components must form a single connected circuit',
+    ],
+    availableComponents: [
+      { type: _ComponentType.BATTERY, props: { voltage: 9 }, label: 'Vcc (9V)' },
+      { type: _ComponentType.BATTERY, props: { voltage: 1.5 }, label: 'Vin (1.5V)' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 10000 }, label: 'R1 10kΩ' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 4700 }, label: 'R2 4.7kΩ' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: 'Rc 1kΩ' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 470 }, label: 'Re 470Ω' },
+      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', hFE: 100, conducting: true }, label: 'NPN Transistor' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.000010, voltageRating: 50 }, label: '10µF (Coupling)' },
+    ],
+    preplacedComponents: [],
+    checkSolution: function (circuit) {
+      const comps = [...circuit.components.values()];
+      const resistors = comps.filter((c) => c.type === _ComponentType.RESISTOR);
+      const transistors = comps.filter((c) => c instanceof _Transistor);
+      const capacitors = comps.filter((c) => c instanceof _Capacitor);
+      if (resistors.length < 4 || transistors.length < 1 || capacitors.length < 1) {
+        return { passed: false, message: 'Need: at least 4 Resistors, 1 Transistor (NPN), and 1 Capacitor.' };
+      }
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'All components must be wired into one connected circuit.' };
+      }
+      return { passed: true, message: 'Transistor amplifier assembled! Signal amplified — the door release triggers.' };
+    },
+    hints: [
+      'Bias resistors R1 and R2 form a voltage divider to set the base voltage.',
+      'Rc (collector resistor) and Re (emitter resistor) set the amplifier operating point.',
+      'The coupling capacitor blocks DC while passing the AC signal.',
+    ],
+    maxScore: 200,
+    timeBonus: 180,
+  },
+
+  // ===== Advanced Levels (7-9) =====
+  {
+    id: 7,
+    title: 'Logic Gate Circuit',
+    difficulty: Difficulty.ADVANCED,
+    description: 'Build a discrete AND/OR logic gate using transistors and diodes.',
+    story: 'The vault uses a custom logic lock built from discrete components. Replicate the AND/OR gate circuit using transistors and diodes to output the correct signal and open the vault!',
+    objectives: [
+      'Wire Battery, 3 Resistors, 2 Transistors, 3 Diodes, and an LED',
+      'Enable both transistors so the LED (output) lights up',
+    ],
+    availableComponents: [
+      { type: _ComponentType.BATTERY, props: { voltage: 9 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: 'R1 1kΩ' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: 'R2 1kΩ' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 330 }, label: 'R3 330Ω' },
+      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', hFE: 100, conducting: false }, label: 'Q1 NPN' },
+      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', hFE: 100, conducting: false }, label: 'Q2 NPN' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 0.02, forwardBiased: true }, label: 'D1' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 0.02, forwardBiased: true }, label: 'D2' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 0.02, forwardBiased: true }, label: 'D3' },
+      { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
+    ],
+    preplacedComponents: [],
+    checkSolution: function (circuit) {
+      const comps = [...circuit.components.values()];
+      const transistors = comps.filter((c) => c instanceof _Transistor);
+      const diodes = comps.filter((c) => c instanceof _Diode);
+      const leds = comps.filter((c) => c instanceof _LED);
+      if (transistors.length < 2 || diodes.length < 3 || leds.length === 0) {
+        return { passed: false, message: 'Need: at least 2 Transistors, 3 Diodes, and 1 LED.' };
+      }
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'All components must be wired into one connected circuit.' };
+      }
+      const result = circuit.simulate();
+      const allLit = leds.every((led) => led.isLit());
+      if (!allLit) {
+        return { passed: false, message: 'LED not lit. Double-click both transistors to activate them.' };
+      }
+      return { passed: true, message: 'Discrete logic gate outputs HIGH — vault opens!' };
+    },
+    hints: [
+      'AND logic: both transistors Q1 and Q2 must conduct for output to be HIGH.',
+      'Double-click each transistor to enable it (simulates base current input).',
+      'Diodes steer current in the logic paths — make sure they are forward-biased.',
     ],
     maxScore: 200,
     timeBonus: 180,
   },
   {
     id: 8,
-    title: 'RL Circuit',
+    title: 'Filter Circuit',
     difficulty: Difficulty.ADVANCED,
-    description: 'Build an RL (Resistor-Inductor) circuit. The inductor stores energy in its magnetic field.',
-    story: 'The lab\'s electromagnetic lock needs an RL circuit to build up the magnetic field gradually!',
+    description: 'Build an LC filter circuit with two resistors, a capacitor, an inductor, and a switch.',
+    story: 'Noise in the control signal is keeping the door sealed. Build a low-pass LC filter to clean the signal and trigger the release mechanism!',
     objectives: [
-      'Place a battery, resistor (100Ω), inductor, and LED',
-      'Connect all in series with wires',
-      'The RL time constant τ = L / R determines build-up speed',
+      'Wire Battery, 2 Resistors, 1 Capacitor, 1 Inductor, and 1 Switch',
+      'Close the switch to activate the filter',
     ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: '100Ω' },
-      { type: _ComponentType.RESISTOR, props: { resistance: 470 }, label: '470Ω' },
-      { type: _ComponentType.INDUCTOR, props: { inductance: 0.01 } },
-      { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
+      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: 'R1 100Ω' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: 'R2 100Ω' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.000001, voltageRating: 50 }, label: '1µF' },
+      { type: _ComponentType.INDUCTOR, props: { inductance: 0.001, wireResistance: 0.5 }, label: '1mH' },
+      { type: _ComponentType.SWITCH, props: { closed: false } },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const inductors = [...circuit.components.values()].filter((c) => c instanceof _Inductor);
-      if (inductors.length === 0) return { passed: false, message: 'Add an inductor to the circuit.' };
-      const result = circuit.simulate();
-      if (!result.isComplete) return { passed: false, message: 'Circuit is not complete. Connect all components with wires.' };
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-      if (leds.length === 0 || !leds.every((l) => l.isLit())) {
-        return { passed: false, message: 'LED is not lit. Check your connections.' };
+      const comps = [...circuit.components.values()];
+      const resistors = comps.filter((c) => c.type === _ComponentType.RESISTOR);
+      const capacitors = comps.filter((c) => c instanceof _Capacitor);
+      const inductors = comps.filter((c) => c instanceof _Inductor);
+      const hasSwitch = comps.some((c) => c.type === _ComponentType.SWITCH);
+      if (resistors.length < 2 || capacitors.length < 1 || inductors.length < 1 || !hasSwitch) {
+        return { passed: false, message: 'Need: 2 Resistors, 1 Capacitor, 1 Inductor, and 1 Switch.' };
       }
-      const resistors = [...circuit.components.values()].filter((c) => c.type === _ComponentType.RESISTOR);
-      const totalR = resistors.reduce((sum, r) => sum + r.getResistance(), 0);
-      const totalL = inductors.reduce((sum, l) => sum + l.getInductance(), 0);
-      const tau = totalR > 0 ? totalL / totalR : 0;
-      return { passed: true, message: `RL circuit complete! τ = L/R = ${(tau * 1000).toFixed(2)}ms. Magnetic lock engaged!` };
+      const sw = comps.find((c) => c.type === _ComponentType.SWITCH);
+      if (!sw.isActive()) {
+        return { passed: false, message: 'Close the switch to activate the LC filter.' };
+      }
+      if (!circuit.validateCircuitTopology()) {
+        return { passed: false, message: 'All components must be wired into one connected circuit.' };
+      }
+      return { passed: true, message: 'LC filter circuit assembled! Signal noise removed — door release triggers!' };
     },
     hints: [
-      'RL time constant: τ = L / R (in seconds).',
-      'The inductor has very low DC resistance, so it barely limits current.',
-      'Connect: Battery(+) → Resistor → Inductor → LED → Battery(−).',
+      'Inductors pass DC and block high-frequency AC; capacitors do the opposite.',
+      'Connect the inductor in series and the capacitor in parallel for a low-pass filter.',
+      'Close the switch after wiring all components.',
     ],
     maxScore: 200,
-    timeBonus: 180,
+    timeBonus: 200,
   },
   {
     id: 9,
-    title: 'Final Escape',
+    title: 'Final Escape: Power Supply',
     difficulty: Difficulty.ADVANCED,
-    description: 'Combine all your knowledge! Build the ultimate circuit using transistor, capacitor, and diode together.',
-    story: 'The final vault uses a multi-component protection circuit. Only by mastering all components can you escape!',
+    description: 'Build a complete rectified and filtered power supply using a transformer, diode bridge, capacitors, and resistors.',
+    story: 'The final door requires a stable DC power supply built from scratch. Assemble the full-wave rectifier with transformer, 4-diode bridge, filter capacitors, and load resistors to power the final lock!',
     objectives: [
-      'Place a battery, resistor, transistor, capacitor, diode, and LED',
-      'Connect all components with wires',
-      'Activate the transistor to complete the challenge',
+      'Wire: Battery, Transformer, 4 Diodes, 2 Capacitors, and 3 Resistors',
+      'All components must form a single connected circuit',
     ],
     availableComponents: [
       { type: _ComponentType.BATTERY, props: { voltage: 9 } },
-      { type: _ComponentType.RESISTOR, props: { resistance: 470 }, label: '470Ω' },
-      { type: _ComponentType.TRANSISTOR, props: { transistorType: 'NPN', gain: 100 } },
-      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.0001 } },
-      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7 } },
-      { type: _ComponentType.LED, props: { forwardVoltage: 2, maxCurrent: 0.02 } },
+      { type: _ComponentType.TRANSFORMER, props: { turnsRatio: 0.5, primaryInductance: 0.1 }, label: 'Transformer (1:0.5)' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 1, forwardBiased: true }, label: 'D1' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 1, forwardBiased: true }, label: 'D2' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 1, forwardBiased: true }, label: 'D3' },
+      { type: _ComponentType.DIODE, props: { forwardVoltage: 0.7, maxCurrent: 1, forwardBiased: true }, label: 'D4' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.001, voltageRating: 50 }, label: 'C1 1000µF' },
+      { type: _ComponentType.CAPACITOR, props: { capacitance: 0.0001, voltageRating: 50 }, label: 'C2 100µF' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: 'R1 100Ω' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 100 }, label: 'R2 100Ω' },
+      { type: _ComponentType.RESISTOR, props: { resistance: 1000 }, label: 'RL 1kΩ (Load)' },
     ],
     preplacedComponents: [],
     checkSolution: function (circuit) {
-      const batteries = [...circuit.components.values()].filter((c) => c.type === _ComponentType.BATTERY);
-      const transistors = [...circuit.components.values()].filter((c) => c instanceof _Transistor);
-      const capacitors = [...circuit.components.values()].filter((c) => c instanceof _Capacitor);
-      const diodes = [...circuit.components.values()].filter((c) => c instanceof _Diode);
-      const leds = [...circuit.components.values()].filter((c) => c instanceof _LED);
-
-      if (batteries.length === 0) return { passed: false, message: 'Add a battery.' };
-      if (transistors.length === 0) return { passed: false, message: 'Add a transistor.' };
-      if (capacitors.length === 0) return { passed: false, message: 'Add a capacitor.' };
-      if (diodes.length === 0) return { passed: false, message: 'Add a diode.' };
-      if (leds.length === 0) return { passed: false, message: 'Add an LED.' };
-
-      if (!transistors.some((t) => t.isActive())) {
-        return { passed: false, message: 'Activate the transistor (double-click it).' };
+      const comps = [...circuit.components.values()];
+      const transformers = comps.filter((c) => c instanceof _Transformer);
+      const diodes = comps.filter((c) => c instanceof _Diode);
+      const capacitors = comps.filter((c) => c instanceof _Capacitor);
+      const resistors = comps.filter((c) => c.type === _ComponentType.RESISTOR);
+      if (transformers.length < 1) {
+        return { passed: false, message: 'Missing Transformer. A transformer steps down voltage for the rectifier.' };
+      }
+      if (diodes.length < 4) {
+        return { passed: false, message: `Only ${diodes.length} of 4 required Diodes placed. You need 4 for a full-wave bridge rectifier.` };
+      }
+      if (capacitors.length < 2) {
+        return { passed: false, message: `Only ${capacitors.length} of 2 required Capacitors placed. Capacitors filter the rectified output.` };
+      }
+      if (resistors.length < 3) {
+        return { passed: false, message: `Only ${resistors.length} of 3 required Resistors placed.` };
       }
       if (!circuit.validateCircuitTopology()) {
-        return { passed: false, message: 'Connect all components with wires to form a complete circuit.' };
+        return { passed: false, message: 'All components must be wired into one connected circuit.' };
       }
-      return { passed: true, message: 'All components connected! The vault opens. You escape! Congratulations!' };
+      return { passed: true, message: 'Complete power supply assembled! Rectified, filtered DC powers the final lock. You escape the laboratory! 🎉' };
     },
     hints: [
-      'This level combines: battery, resistor, transistor, capacitor, diode, and LED.',
-      'Connect them all in a series circuit then double-click the transistor.',
-      'The capacitor has high DC resistance but the topology check just requires everything wired.',
+      'A full-wave bridge rectifier uses 4 diodes arranged in a bridge pattern.',
+      'Connect the transformer secondary to the diode bridge input.',
+      'Filter capacitors smooth the pulsating DC output from the rectifier.',
+      'Load resistors simulate the device being powered by the supply.',
     ],
     maxScore: 300,
     timeBonus: 300,

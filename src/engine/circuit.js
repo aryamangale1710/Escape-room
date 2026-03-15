@@ -149,132 +149,177 @@ class Wire extends Component {
   }
 }
 
-/** Capacitor: stores charge; high DC resistance in steady-state simulation */
+/**
+ * Capacitor - stores electrical charge, blocks DC in steady state.
+ */
 class Capacitor extends Component {
-  constructor(id, capacitance = 0.0001) {
-    super(ComponentType.CAPACITOR, id, { capacitance });
-  }
-
-  getResistance() {
-    return 1e6; // 1 MΩ — blocks DC in steady-state
+  constructor(id, capacitance = 0.0001, voltageRating = 50) {
+    super(ComponentType.CAPACITOR, id, { capacitance, voltageRating, charge: 0 });
   }
 
   getCapacitance() {
     return this.properties.capacitance;
   }
-}
-
-/** Inductor: stores energy in magnetic field; near-zero DC resistance */
-class Inductor extends Component {
-  constructor(id, inductance = 0.001) {
-    super(ComponentType.INDUCTOR, id, { inductance });
-  }
 
   getResistance() {
-    return 0.001; // Near-ideal conductor in DC steady-state
+    // In DC steady-state a capacitor is effectively an open circuit
+    return 1e6;
+  }
+
+  /** Voltage across capacitor after charging for time t through resistance R from sourceVoltage. */
+  getChargeVoltage(sourceVoltage, resistance, time) {
+    const tau = resistance * this.properties.capacitance;
+    return sourceVoltage * (1 - Math.exp(-time / tau));
+  }
+}
+
+/**
+ * Inductor - stores energy in a magnetic field, passes DC freely.
+ */
+class Inductor extends Component {
+  constructor(id, inductance = 0.001, wireResistance = 0.1) {
+    super(ComponentType.INDUCTOR, id, { inductance, wireResistance });
   }
 
   getInductance() {
     return this.properties.inductance;
   }
+
+  getResistance() {
+    // In DC steady-state an ideal inductor is a short (only wire resistance remains)
+    return this.properties.wireResistance;
+  }
+
+  /** Current through inductor after time t with voltage V across inductance L. */
+  getTransientCurrent(voltage, resistance, time) {
+    const tau = this.properties.inductance / (resistance || 1);
+    return (voltage / (resistance || 1)) * (1 - Math.exp(-time / tau));
+  }
 }
 
-/** Diode: one-way current valve with forward voltage drop */
+/**
+ * Diode - allows current in one direction only.
+ */
 class Diode extends Component {
-  constructor(id, forwardVoltage = 0.7) {
-    super(ComponentType.DIODE, id, { forwardVoltage, forward: true });
+  constructor(id, forwardVoltage = 0.7, maxCurrent = 1) {
+    super(ComponentType.DIODE, id, { forwardVoltage, maxCurrent, forwardBiased: true });
   }
 
   getResistance() {
-    if (!this.properties.forward) return Infinity;
-    // Model forward bias as equivalent resistance: Vf / If (at ~10 mA)
-    return this.properties.forwardVoltage / 0.01;
-  }
-
-  getForwardVoltage() {
-    return this.properties.forwardVoltage;
-  }
-
-  isForward() {
-    return this.properties.forward;
-  }
-
-  setForward(state) {
-    this.properties.forward = Boolean(state);
-  }
-}
-
-/** Transistor (NPN/PNP): acts as electronically controlled switch */
-class Transistor extends Component {
-  constructor(id, transistorType = 'NPN', gain = 100) {
-    super(ComponentType.TRANSISTOR, id, { transistorType, gain, active: false });
-  }
-
-  getResistance() {
-    return this.properties.active ? 0.1 : Infinity; // ON: ~0.1 Ω; OFF: open circuit
+    return this.properties.forwardBiased
+      ? this.properties.forwardVoltage / this.properties.maxCurrent
+      : Infinity;
   }
 
   isActive() {
-    return this.properties.active;
+    return this.properties.forwardBiased;
   }
 
+  isForwardBiased() {
+    return this.properties.forwardBiased;
+  }
+
+  setForwardBias(state) {
+    this.properties.forwardBiased = state;
+  }
+
+  /** Flip diode orientation. */
   toggle() {
-    this.properties.active = !this.properties.active;
-    return this.properties.active;
-  }
-
-  activate() {
-    this.properties.active = true;
-  }
-
-  getGain() {
-    return this.properties.gain;
-  }
-
-  getType() {
-    return this.properties.transistorType;
+    this.properties.forwardBiased = !this.properties.forwardBiased;
+    return this.properties.forwardBiased;
   }
 }
 
-/** Transformer: voltage/current transformation via turns ratio */
-class Transformer extends Component {
-  constructor(id, turnsRatio = 1) {
-    super(ComponentType.TRANSFORMER, id, { turnsRatio });
+/**
+ * Transistor (NPN or PNP) - acts as an electronic switch or amplifier.
+ */
+class Transistor extends Component {
+  constructor(id, transistorType = 'NPN', hFE = 100) {
+    super(ComponentType.TRANSISTOR, id, {
+      transistorType,
+      hFE,
+      Vbe: 0.7,
+      Vce_sat: 0.2,
+      conducting: false,
+      baseCurrent: 0,
+    });
   }
 
   getResistance() {
-    return 0.1; // Small winding resistance
+    return this.properties.conducting ? 0.001 : Infinity;
+  }
+
+  isActive() {
+    return this.properties.conducting;
+  }
+
+  isConducting() {
+    return this.properties.conducting;
+  }
+
+  setConducting(state) {
+    this.properties.conducting = state;
+  }
+
+  setBaseCurrent(current) {
+    this.properties.baseCurrent = current;
+    // Transistor conducts when base current exceeds ~1 mA threshold
+    this.properties.conducting = current >= 0.001;
+  }
+
+  /** Toggle between conducting and cutoff (useful for game interaction). */
+  toggle() {
+    this.properties.conducting = !this.properties.conducting;
+    return this.properties.conducting;
+  }
+
+  getCollectorCurrent(baseCurrent) {
+    return this.properties.hFE * baseCurrent;
+  }
+}
+
+/**
+ * Transformer - transfers power between coils with voltage transformation.
+ */
+class Transformer extends Component {
+  constructor(id, turnsRatio = 1, primaryInductance = 0.1) {
+    super(ComponentType.TRANSFORMER, id, { turnsRatio, primaryInductance, secondaryResistance: 0.5 });
+  }
+
+  getResistance() {
+    return this.properties.secondaryResistance;
   }
 
   getTurnsRatio() {
     return this.properties.turnsRatio;
   }
 
-  getVoltageRatio() {
-    return this.properties.turnsRatio;
+  /** Output voltage = input voltage × turns ratio. */
+  getOutputVoltage(inputVoltage) {
+    return inputVoltage * this.properties.turnsRatio;
   }
 }
 
-/** Potentiometer: variable resistor adjustable via position (0–1) */
+/**
+ * Potentiometer - variable resistor adjustable by position (0–1).
+ */
 class Potentiometer extends Component {
-  constructor(id, maxResistance = 1000, position = 0.5) {
-    super(ComponentType.POTENTIOMETER, id, { maxResistance, position });
+  constructor(id, minResistance = 0, maxResistance = 10000, position = 0.5) {
+    super(ComponentType.POTENTIOMETER, id, { minResistance, maxResistance, position });
   }
 
   getResistance() {
-    return this.properties.maxResistance * this.properties.position;
+    const { minResistance, maxResistance, position } = this.properties;
+    return minResistance + (maxResistance - minResistance) * position;
+  }
+
+  /** Set wiper position (0 = min resistance, 1 = max resistance). */
+  setPosition(position) {
+    this.properties.position = Math.max(0, Math.min(1, position));
   }
 
   getPosition() {
     return this.properties.position;
-  }
-
-  setPosition(pos) {
-    this.properties.position = Math.max(0, Math.min(1, pos));
-  }
-
-  getMaxResistance() {
-    return this.properties.maxResistance;
   }
 }
 
@@ -361,6 +406,64 @@ class Circuit {
 
     this.connections.push({ componentId, terminal, nodeId });
     return true;
+  }
+
+  /**
+   * Check whether two components share at least one electrical node.
+   */
+  isConnected(compIdA, compIdB) {
+    const compA = this.components.get(compIdA);
+    const compB = this.components.get(compIdB);
+    if (!compA || !compB) return false;
+    const nodesA = [compA.nodeA, compA.nodeB].filter(Boolean);
+    const nodesB = [compB.nodeA, compB.nodeB].filter(Boolean);
+    return nodesA.some((n) => nodesB.includes(n));
+  }
+
+  /**
+   * BFS from startCompId, returning all components reachable via shared nodes.
+   */
+  getConnectedPath(startCompId) {
+    const start = this.components.get(startCompId);
+    if (!start) return [];
+    const visited = new Set([startCompId]);
+    const path = [start];
+    const queue = [startCompId];
+    while (queue.length > 0) {
+      const currId = queue.shift();
+      for (const [otherId] of this.components) {
+        if (visited.has(otherId)) continue;
+        if (this.isConnected(currId, otherId)) {
+          visited.add(otherId);
+          path.push(this.components.get(otherId));
+          queue.push(otherId);
+        }
+      }
+    }
+    return path;
+  }
+
+  /**
+   * Return true if all components are reachable from the first component (single connected graph).
+   */
+  validateCircuitTopology() {
+    if (this.components.size === 0) return false;
+    for (const [, comp] of this.components) {
+      if (comp.nodeA === null || comp.nodeB === null) return false;
+    }
+    const firstId = [...this.components.keys()][0];
+    const path = this.getConnectedPath(firstId);
+    return path.length === this.components.size;
+  }
+
+  /**
+   * Return true if any Wire component exists in the circuit.
+   */
+  hasWireConnection() {
+    for (const [, comp] of this.components) {
+      if (comp.type === ComponentType.WIRE) return true;
+    }
+    return false;
   }
 
   /**
@@ -458,16 +561,54 @@ class Circuit {
       return result;
     }
 
-    // Check circuit topology (all components wired into a complete loop)
+    // Check for reverse-biased diodes blocking current
+    const hasBlockingDiode = otherComponents.some(
+      (c) => c instanceof Diode && !c.isForwardBiased()
+    );
+
+    if (hasBlockingDiode) {
+      result.errors.push('Circuit is blocked: diode is reverse biased');
+      this._resetComponents(otherComponents);
+      return result;
+    }
+
+    // Check for non-conducting transistors blocking current
+    const hasNonConductingTransistor = otherComponents.some(
+      (c) => c instanceof Transistor && !c.isConducting()
+    );
+
+    if (hasNonConductingTransistor) {
+      result.errors.push('Circuit is blocked: transistor is not conducting');
+      this._resetComponents(otherComponents);
+      return result;
+    }
+
+    // Check circuit completeness (all components have connections assigned)
+    const allConnected = [...this.components.values()].every(
+      (c) => c.nodeA !== null && c.nodeB !== null
+    );
+
+    if (!allConnected) {
+      result.errors.push('Circuit is incomplete: not all components are connected');
+      return result;
+    }
+
+    // Validate topology: all components must be in one connected graph
     if (!this.validateCircuitTopology()) {
-      result.errors.push('Circuit is incomplete: connect all components with wires');
+      result.errors.push('Circuit is incomplete: components are not all wired together');
       return result;
     }
 
     // Calculate total voltage from batteries
     result.totalVoltage = batteries.reduce((sum, b) => sum + b.getVoltage(), 0);
 
-    // Calculate total resistance from non-battery components
+    // Transformers scale the effective voltage
+    const transformers = otherComponents.filter((c) => c instanceof Transformer);
+    if (transformers.length > 0) {
+      result.totalVoltage *= transformers[0].getTurnsRatio();
+    }
+
+    // Calculate total resistance from non-battery, non-wire components
     const resistiveComponents = otherComponents.filter((c) => c.type !== ComponentType.WIRE);
 
     if (resistiveComponents.length === 0) {
@@ -480,6 +621,17 @@ class Circuit {
     if (result.totalResistance < 1) {
       result.hasShortCircuit = true;
       result.errors.push('Warning: Very low resistance - possible short circuit');
+    }
+
+    // Capacitors with very high resistance effectively open the DC path
+    if (result.totalResistance >= 1e5) {
+      const hasCapacitor = otherComponents.some((c) => c instanceof Capacitor);
+      const msg = hasCapacitor
+        ? 'Circuit appears open: capacitor is blocking DC current'
+        : 'Circuit appears open: very high resistance detected';
+      result.errors.push(msg);
+      this._resetComponents(otherComponents);
+      return result;
     }
 
     // Apply Ohm's Law: I = V / R
@@ -653,6 +805,12 @@ if (typeof module !== 'undefined' && module.exports) {
     LED,
     Switch,
     Wire,
+    Capacitor,
+    Inductor,
+    Diode,
+    Transistor,
+    Transformer,
+    Potentiometer,
     LogicGate,
     Circuit,
     Capacitor,
