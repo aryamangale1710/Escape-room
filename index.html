@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circuit Escape: The STEM Adventure</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+
+  <!-- Title Screen -->
+  <div id="title-screen" class="screen">
+    <h1>⚡ Circuit Escape</h1>
+    <p class="subtitle">The STEM Adventure</p>
+    <p class="subtitle" style="max-width:500px; font-size:0.95rem; margin-bottom:2rem;">
+      Solve electronic circuit puzzles to escape the laboratory!<br>
+      Learn Ohm's Law, logic gates, and circuit design.
+    </p>
+    <div>
+      <button id="btn-play" class="title-btn primary">▶ Start Game</button>
+      <button id="btn-levels" class="title-btn">📋 Select Level</button>
+    </div>
+    <p style="margin-top:2rem; font-size:0.8rem; color:var(--text-secondary);">Ages 10–15 · Educational Puzzle Game</p>
+  </div>
+
+  <!-- Level Select Screen -->
+  <div id="level-select" class="screen">
+    <h2>Select a Room</h2>
+    <div id="level-grid" class="level-grid"></div>
+    <div style="margin-top:1rem; text-align:center;">
+      <span id="total-score-display" style="color:var(--accent-yellow); font-weight:600;"></span>
+    </div>
+    <button id="btn-back-title" class="back-btn">← Back to Title</button>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <button id="btn-back-levels" class="tool-btn">← Rooms</button>
+      <span class="level-info">Room 1: The Light Switch</span>
+      <button id="btn-multimeter" class="tool-btn">📏 Multimeter</button>
+      <button id="btn-reset" class="tool-btn">🔄 Reset</button>
+      <span class="score-display">Score: 0</span>
+    </div>
+
+    <!-- Component Palette (Left) -->
+    <div class="component-palette">
+      <h3>Components</h3>
+      <div id="component-list"></div>
+    </div>
+
+    <!-- Circuit Board (Center) -->
+    <div class="circuit-board">
+      <div class="grid-overlay"></div>
+    </div>
+
+    <!-- Info Panel (Right) -->
+    <div class="info-panel">
+      <div class="info-section">
+        <h4>📖 Story</h4>
+        <p id="story-text"></p>
+      </div>
+
+      <div class="info-section">
+        <h4>🎯 Objectives</h4>
+        <ul id="objectives-list"></ul>
+      </div>
+
+      <div class="info-section">
+        <h4>📏 Multimeter</h4>
+        <div class="measurement-display">
+          <div id="meter-value" class="value">---</div>
+          <div id="meter-unit" class="unit"></div>
+          <div id="meter-label" class="label">Select a component</div>
+        </div>
+      </div>
+
+      <div class="hint-box" id="hint-box">
+        💡 Hint will appear here
+      </div>
+
+      <div class="action-buttons">
+        <button id="btn-check" class="action-btn check">✓ Check Circuit</button>
+        <button id="btn-hint" class="action-btn hint">💡 Hint</button>
+      </div>
+
+      <div class="info-section">
+        <h4>📝 Description</h4>
+        <p id="desc-text"></p>
+      </div>
+    </div>
+
+    <!-- Bottom Status Bar -->
+    <div class="status-bar">
+      <span class="timer">⏱ 0:00</span>
+      <span>Drag components onto the board</span>
+      <span class="circuit-status">Ready</span>
+    </div>
+  </div>
+
+  <!-- Result Modal -->
+  <div id="result-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>Result</h2>
+      <p class="modal-message"></p>
+      <div class="stars-display"></div>
+      <div class="score-text"></div>
+      <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
+        <button id="btn-next-level" class="title-btn primary">Next Room →</button>
+        <button id="btn-retry" class="title-btn">Try Again</button>
+        <button id="btn-modal-levels" class="title-btn">Level Select</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="src/engine/circuit.js"></script>
+  <script src="src/engine/levels.js"></script>
+  <script src="src/ui/game.js"></script>
+</body>
+</html>
