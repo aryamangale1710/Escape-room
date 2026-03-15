@@ -38,8 +38,9 @@
     <!-- Top Bar -->
     <div class="top-bar">
       <button id="btn-back-levels" class="tool-btn">← Rooms</button>
-      <span class="level-info">Room 1: The Light Switch</span>
+      <span class="level-info">Room 1: RC Charging</span>
       <button id="btn-multimeter" class="tool-btn">📏 Multimeter</button>
+      <button id="btn-wire" class="tool-btn">🔌 Wire</button>
       <button id="btn-reset" class="tool-btn">🔄 Reset</button>
       <span class="score-display">Score: 0</span>
     </div>
@@ -53,6 +54,7 @@
     <!-- Circuit Board (Center) -->
     <div class="circuit-board">
       <div class="grid-overlay"></div>
+      <svg id="wire-layer" class="wire-layer" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 
     <!-- Info Panel (Right) -->
@@ -94,7 +96,7 @@
     <!-- Bottom Status Bar -->
     <div class="status-bar">
       <span class="timer">⏱ 0:00</span>
-      <span>Drag components onto the board</span>
+      <span>Drag components onto the board, then use 🔌 Wire to connect them</span>
       <span class="circuit-status">Ready</span>
     </div>
   </div>

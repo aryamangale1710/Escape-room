@@ -571,6 +571,69 @@ body {
   text-shadow: 0 0 15px var(--accent-green), 0 0 30px var(--accent-green);
 }
 
+/* ===== Terminal Dots ===== */
+.terminal {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--text-secondary);
+  cursor: default;
+  transition: background 0.15s, border-color 0.15s;
+  z-index: 5;
+}
+
+.terminal-a {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.terminal-b {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.terminal.connected {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.terminal.wire-selected {
+  background: var(--accent-yellow);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 6px var(--accent-yellow);
+}
+
+/* Wire mode: show terminals and pointer cursor */
+.circuit-board.wire-mode .terminal {
+  cursor: crosshair;
+  border-color: var(--accent-blue);
+}
+
+.circuit-board.wire-mode .terminal:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 6px var(--accent-blue);
+}
+
+.circuit-board.wire-mode .placed-component {
+  cursor: default;
+}
+
+/* ===== Wire SVG Overlay ===== */
+.wire-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
   #game-screen {
