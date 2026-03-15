@@ -13,6 +13,12 @@ const {
   Wire,
   LogicGate,
   Circuit,
+  Capacitor,
+  Inductor,
+  Diode,
+  Transistor,
+  Transformer,
+  Potentiometer,
 } = require('../src/engine/circuit');
 
 const {
@@ -449,18 +455,312 @@ suite('Level 2 Solution Test (Ohm\'s Law)', () => {
   assert(result.passed, 'Level 2 with 350Ω resistor passes');
 });
 
-suite('Level 7 Solution Test (Logic Gates)', () => {
+suite('Level 7 Solution Test (Transistor Amplifier)', () => {
   const circuit = new Circuit();
-  const andGate = new LogicGate(ComponentType.AND_GATE, 'and1');
-  const orGate = new LogicGate(ComponentType.OR_GATE, 'or1');
-  const notGate = new LogicGate(ComponentType.NOT_GATE, 'not1');
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 470);
+  const transistor = new Transistor('t1', 'NPN', 200);
+  const led = new LED('led1', 2, 0.02);
 
-  circuit.addComponent(andGate);
-  circuit.addComponent(orGate);
-  circuit.addComponent(notGate);
+  transistor.activate(); // double-click equivalent
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(transistor);
+  circuit.addComponent(led);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  const n3 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('t1', 'A', n1);
+  circuit.connect('t1', 'B', n2);
+  circuit.connect('led1', 'A', n2);
+  circuit.connect('led1', 'B', n3);
+  circuit.connect('b1', 'B', n3);
 
   const result = LEVELS[6].checkSolution(circuit);
-  assert(result.passed, 'Level 7 logic gate solution passes');
+  assert(result.passed, 'Level 7 transistor amplifier solution passes');
+});
+
+suite('Level 3 Solution Test (Diode Direction)', () => {
+  const circuit = new Circuit();
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 330);
+  const diode = new Diode('d1', 0.7);
+  const led = new LED('led1', 2, 0.02);
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(diode);
+  circuit.addComponent(led);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  const n3 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('d1', 'A', n1);
+  circuit.connect('d1', 'B', n2);
+  circuit.connect('led1', 'A', n2);
+  circuit.connect('led1', 'B', n3);
+  circuit.connect('b1', 'B', n3);
+
+  const result = LEVELS[2].checkSolution(circuit);
+  assert(result.passed, 'Level 3 diode circuit solution passes');
+});
+
+suite('Level 4 Solution Test (RC Charging Circuit)', () => {
+  const circuit = new Circuit();
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 10000);
+  const capacitor = new Capacitor('c1', 0.0001);
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(capacitor);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('c1', 'A', n1);
+  circuit.connect('c1', 'B', n2);
+  circuit.connect('b1', 'B', n2);
+
+  const result = LEVELS[3].checkSolution(circuit);
+  assert(result.passed, 'Level 4 RC circuit (10kΩ, 100μF → τ=1s) passes');
+});
+
+suite('Level 5 Solution Test (Transistor Switch)', () => {
+  const circuit = new Circuit();
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 470);
+  const transistor = new Transistor('t1', 'NPN', 100);
+  const led = new LED('led1', 2, 0.02);
+
+  transistor.activate();
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(transistor);
+  circuit.addComponent(led);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  const n3 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('t1', 'A', n1);
+  circuit.connect('t1', 'B', n2);
+  circuit.connect('led1', 'A', n2);
+  circuit.connect('led1', 'B', n3);
+  circuit.connect('b1', 'B', n3);
+
+  const result = LEVELS[4].checkSolution(circuit);
+  assert(result.passed, 'Level 5 transistor switch solution passes');
+});
+
+suite('Level 8 Solution Test (RL Circuit)', () => {
+  const circuit = new Circuit();
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 100);
+  const inductor = new Inductor('l1', 0.01);
+  const led = new LED('led1', 2, 0.02);
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(inductor);
+  circuit.addComponent(led);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  const n3 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('l1', 'A', n1);
+  circuit.connect('l1', 'B', n2);
+  circuit.connect('led1', 'A', n2);
+  circuit.connect('led1', 'B', n3);
+  circuit.connect('b1', 'B', n3);
+
+  const result = LEVELS[7].checkSolution(circuit);
+  assert(result.passed, 'Level 8 RL circuit solution passes');
+});
+
+suite('Level 9 Solution Test (Final Escape)', () => {
+  const circuit = new Circuit();
+  const battery = new Battery('b1', 9);
+  const resistor = new Resistor('r1', 470);
+  const transistor = new Transistor('t1', 'NPN', 100);
+  const capacitor = new Capacitor('c1', 0.0001);
+  const diode = new Diode('d1', 0.7);
+  const led = new LED('led1', 2, 0.02);
+
+  transistor.activate();
+
+  circuit.addComponent(battery);
+  circuit.addComponent(resistor);
+  circuit.addComponent(transistor);
+  circuit.addComponent(capacitor);
+  circuit.addComponent(diode);
+  circuit.addComponent(led);
+
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  const n3 = circuit.createNode();
+  const n4 = circuit.createNode();
+  const n5 = circuit.createNode();
+
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('r1', 'A', n0);
+  circuit.connect('r1', 'B', n1);
+  circuit.connect('t1', 'A', n1);
+  circuit.connect('t1', 'B', n2);
+  circuit.connect('c1', 'A', n2);
+  circuit.connect('c1', 'B', n3);
+  circuit.connect('d1', 'A', n3);
+  circuit.connect('d1', 'B', n4);
+  circuit.connect('led1', 'A', n4);
+  circuit.connect('led1', 'B', n5);
+  circuit.connect('b1', 'B', n5);
+
+  const result = LEVELS[8].checkSolution(circuit);
+  assert(result.passed, 'Level 9 final escape solution passes');
+});
+
+// ===== New Component Tests =====
+
+suite('Capacitor', () => {
+  const cap = new Capacitor('c1', 0.0001);
+  assert(cap.type === ComponentType.CAPACITOR, 'has correct type');
+  assert(cap.getCapacitance() === 0.0001, 'returns correct capacitance (100μF)');
+  assert(cap.getResistance() === 1e6, 'models high DC resistance (1MΩ)');
+});
+
+suite('Inductor', () => {
+  const ind = new Inductor('l1', 0.01);
+  assert(ind.type === ComponentType.INDUCTOR, 'has correct type');
+  assert(ind.getInductance() === 0.01, 'returns correct inductance (10mH)');
+  assert(ind.getResistance() < 0.01, 'has near-zero DC resistance');
+});
+
+suite('Diode', () => {
+  const diode = new Diode('d1', 0.7);
+  assert(diode.type === ComponentType.DIODE, 'has correct type');
+  assert(diode.getForwardVoltage() === 0.7, 'returns correct forward voltage');
+  assert(diode.isForward() === true, 'defaults to forward bias');
+  assert(diode.getResistance() > 0, 'has positive forward resistance');
+  diode.setForward(false);
+  assert(diode.getResistance() === Infinity, 'reverse bias has infinite resistance');
+  diode.setForward(true);
+  assert(diode.isForward() === true, 'can be reset to forward');
+});
+
+suite('Transistor', () => {
+  const t = new Transistor('t1', 'NPN', 100);
+  assert(t.type === ComponentType.TRANSISTOR, 'has correct type');
+  assert(t.getType() === 'NPN', 'returns transistor type');
+  assert(t.getGain() === 100, 'returns correct gain');
+  assert(t.isActive() === false, 'starts inactive (OFF)');
+  assert(t.getResistance() === Infinity, 'OFF state has infinite resistance');
+  t.toggle();
+  assert(t.isActive() === true, 'toggle activates transistor');
+  assert(t.getResistance() < 1, 'ON state has low resistance');
+  t.toggle();
+  assert(t.isActive() === false, 'toggle deactivates transistor');
+  const t2 = new Transistor('t2');
+  t2.activate();
+  assert(t2.isActive() === true, 'activate() turns on transistor');
+});
+
+suite('Transformer', () => {
+  const xfmr = new Transformer('x1', 2);
+  assert(xfmr.type === ComponentType.TRANSFORMER, 'has correct type');
+  assert(xfmr.getTurnsRatio() === 2, 'returns correct turns ratio');
+  assert(xfmr.getVoltageRatio() === 2, 'voltage ratio equals turns ratio');
+  assert(xfmr.getResistance() > 0, 'has small winding resistance');
+});
+
+suite('Potentiometer', () => {
+  const pot = new Potentiometer('p1', 1000, 0.5);
+  assert(pot.type === ComponentType.POTENTIOMETER, 'has correct type');
+  assert(pot.getMaxResistance() === 1000, 'returns max resistance');
+  assert(pot.getPosition() === 0.5, 'starts at midpoint');
+  assertApprox(pot.getResistance(), 500, 0.01, 'resistance at 50% position');
+  pot.setPosition(0.25);
+  assertApprox(pot.getResistance(), 250, 0.01, 'resistance at 25% position');
+  pot.setPosition(1.5); // out of range
+  assert(pot.getPosition() === 1, 'position clamped to max 1');
+  pot.setPosition(-0.5); // out of range
+  assert(pot.getPosition() === 0, 'position clamped to min 0');
+});
+
+suite('Circuit - validateCircuitTopology', () => {
+  // Valid circuit: battery + resistor + LED
+  const c1 = new Circuit();
+  c1.addComponent(new Battery('b1', 9));
+  c1.addComponent(new Resistor('r1', 100));
+  c1.addComponent(new LED('led1', 2, 0.02));
+  const n0 = c1.createNode(); const n1 = c1.createNode(); const n2 = c1.createNode();
+  c1.connect('b1', 'A', n0); c1.connect('b1', 'B', n2);
+  c1.connect('r1', 'A', n0); c1.connect('r1', 'B', n1);
+  c1.connect('led1', 'A', n1); c1.connect('led1', 'B', n2);
+  assert(c1.validateCircuitTopology() === true, 'valid series circuit passes topology check');
+
+  // Invalid: battery terminal not connected
+  const c2 = new Circuit();
+  c2.addComponent(new Battery('b1', 9));
+  c2.addComponent(new Resistor('r1', 100));
+  assert(c2.validateCircuitTopology() === false, 'disconnected components fail topology check');
+
+  // Invalid: no battery
+  const c3 = new Circuit();
+  c3.addComponent(new Resistor('r1', 100));
+  assert(c3.validateCircuitTopology() === false, 'no battery fails topology check');
+
+  // Invalid: battery short (same node A and B)
+  const c4 = new Circuit();
+  c4.addComponent(new Battery('b1', 9));
+  const nx = c4.createNode();
+  c4.connect('b1', 'A', nx); c4.connect('b1', 'B', nx);
+  assert(c4.validateCircuitTopology() === false, 'battery short-circuit fails topology check');
+});
+
+suite('Circuit - mergeNodes', () => {
+  const circuit = new Circuit();
+  circuit.addComponent(new Battery('b1', 9));
+  circuit.addComponent(new Resistor('r1', 100));
+  const n0 = circuit.createNode();
+  const n1 = circuit.createNode();
+  const n2 = circuit.createNode();
+  circuit.connect('b1', 'A', n0);
+  circuit.connect('b1', 'B', n2);
+  circuit.connect('r1', 'A', n1); // intentionally separate node
+  circuit.connect('r1', 'B', n2);
+  // Before merge: r1.nodeA = n1, b1.nodeA = n0
+  assert(circuit.getComponent('r1').nodeA === n1, 'r1 nodeA is n1 before merge');
+  // Merge n1 into n0 (simulate drawing a wire battery-A to resistor-A)
+  circuit.mergeNodes(n0, n1);
+  assert(circuit.getComponent('r1').nodeA === n0, 'r1 nodeA becomes n0 after merge');
+  assert(!circuit.nodes.has(n1), 'n1 node is removed after merge');
 });
 
 // ===== Report =====

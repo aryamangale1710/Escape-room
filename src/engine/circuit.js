@@ -14,6 +14,12 @@ const ComponentType = Object.freeze({
   AND_GATE: 'and_gate',
   OR_GATE: 'or_gate',
   NOT_GATE: 'not_gate',
+  CAPACITOR: 'capacitor',
+  INDUCTOR: 'inductor',
+  DIODE: 'diode',
+  TRANSISTOR: 'transistor',
+  TRANSFORMER: 'transformer',
+  POTENTIOMETER: 'potentiometer',
 });
 
 /**
@@ -140,6 +146,135 @@ class Wire extends Component {
 
   getResistance() {
     return 0.001;
+  }
+}
+
+/** Capacitor: stores charge; high DC resistance in steady-state simulation */
+class Capacitor extends Component {
+  constructor(id, capacitance = 0.0001) {
+    super(ComponentType.CAPACITOR, id, { capacitance });
+  }
+
+  getResistance() {
+    return 1e6; // 1 MΩ — blocks DC in steady-state
+  }
+
+  getCapacitance() {
+    return this.properties.capacitance;
+  }
+}
+
+/** Inductor: stores energy in magnetic field; near-zero DC resistance */
+class Inductor extends Component {
+  constructor(id, inductance = 0.001) {
+    super(ComponentType.INDUCTOR, id, { inductance });
+  }
+
+  getResistance() {
+    return 0.001; // Near-ideal conductor in DC steady-state
+  }
+
+  getInductance() {
+    return this.properties.inductance;
+  }
+}
+
+/** Diode: one-way current valve with forward voltage drop */
+class Diode extends Component {
+  constructor(id, forwardVoltage = 0.7) {
+    super(ComponentType.DIODE, id, { forwardVoltage, forward: true });
+  }
+
+  getResistance() {
+    if (!this.properties.forward) return Infinity;
+    // Model forward bias as equivalent resistance: Vf / If (at ~10 mA)
+    return this.properties.forwardVoltage / 0.01;
+  }
+
+  getForwardVoltage() {
+    return this.properties.forwardVoltage;
+  }
+
+  isForward() {
+    return this.properties.forward;
+  }
+
+  setForward(state) {
+    this.properties.forward = Boolean(state);
+  }
+}
+
+/** Transistor (NPN/PNP): acts as electronically controlled switch */
+class Transistor extends Component {
+  constructor(id, transistorType = 'NPN', gain = 100) {
+    super(ComponentType.TRANSISTOR, id, { transistorType, gain, active: false });
+  }
+
+  getResistance() {
+    return this.properties.active ? 0.1 : Infinity; // ON: ~0.1 Ω; OFF: open circuit
+  }
+
+  isActive() {
+    return this.properties.active;
+  }
+
+  toggle() {
+    this.properties.active = !this.properties.active;
+    return this.properties.active;
+  }
+
+  activate() {
+    this.properties.active = true;
+  }
+
+  getGain() {
+    return this.properties.gain;
+  }
+
+  getType() {
+    return this.properties.transistorType;
+  }
+}
+
+/** Transformer: voltage/current transformation via turns ratio */
+class Transformer extends Component {
+  constructor(id, turnsRatio = 1) {
+    super(ComponentType.TRANSFORMER, id, { turnsRatio });
+  }
+
+  getResistance() {
+    return 0.1; // Small winding resistance
+  }
+
+  getTurnsRatio() {
+    return this.properties.turnsRatio;
+  }
+
+  getVoltageRatio() {
+    return this.properties.turnsRatio;
+  }
+}
+
+/** Potentiometer: variable resistor adjustable via position (0–1) */
+class Potentiometer extends Component {
+  constructor(id, maxResistance = 1000, position = 0.5) {
+    super(ComponentType.POTENTIOMETER, id, { maxResistance, position });
+  }
+
+  getResistance() {
+    return this.properties.maxResistance * this.properties.position;
+  }
+
+  getPosition() {
+    return this.properties.position;
+  }
+
+  setPosition(pos) {
+    this.properties.position = Math.max(0, Math.min(1, pos));
+  }
+
+  getMaxResistance() {
+    return this.properties.maxResistance;
   }
 }
 
@@ -323,13 +458,9 @@ class Circuit {
       return result;
     }
 
-    // Check circuit completeness (all components connected)
-    const allConnected = [...this.components.values()].every(
-      (c) => c.nodeA !== null && c.nodeB !== null
-    );
-
-    if (!allConnected) {
-      result.errors.push('Circuit is incomplete: not all components are connected');
+    // Check circuit topology (all components wired into a complete loop)
+    if (!this.validateCircuitTopology()) {
+      result.errors.push('Circuit is incomplete: connect all components with wires');
       return result;
     }
 
@@ -423,6 +554,79 @@ class Circuit {
     }
   }
 
+  /**
+   * Validate circuit topology via BFS:
+   * checks all components have nodes assigned and that the external circuit
+   * forms a complete path from battery (+) to battery (-).
+   */
+  validateCircuitTopology() {
+    const batteries = [...this.components.values()].filter(
+      (c) => c.type === ComponentType.BATTERY
+    );
+    if (batteries.length === 0) return false;
+
+    const battery = batteries[0];
+    if (battery.nodeA === null || battery.nodeB === null) return false;
+    if (battery.nodeA === battery.nodeB) return false;
+
+    // Every component must have both terminals wired
+    for (const [, comp] of this.components) {
+      if (comp.nodeA === null || comp.nodeB === null) return false;
+    }
+
+    // BFS from battery positive terminal through external components only
+    const visited = new Set();
+    const queue = [battery.nodeA];
+    visited.add(battery.nodeA);
+
+    while (queue.length > 0) {
+      const currentNode = queue.shift();
+      if (currentNode === battery.nodeB) return true;
+
+      for (const [, comp] of this.components) {
+        if (comp === battery) continue; // don't traverse through the source
+
+        let nextNode = null;
+        if (comp.nodeA === currentNode && comp.nodeB && !visited.has(comp.nodeB)) {
+          nextNode = comp.nodeB;
+        } else if (comp.nodeB === currentNode && comp.nodeA && !visited.has(comp.nodeA)) {
+          nextNode = comp.nodeA;
+        }
+
+        if (nextNode !== null) {
+          visited.add(nextNode);
+          queue.push(nextNode);
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Merge two nodes: all references to removeNodeId become keepNodeId.
+   * Used when a wire connects two previously separate terminals.
+   */
+  mergeNodes(keepNodeId, removeNodeId) {
+    if (keepNodeId === removeNodeId) return;
+
+    for (const [, comp] of this.components) {
+      if (comp.nodeA === removeNodeId) comp.nodeA = keepNodeId;
+      if (comp.nodeB === removeNodeId) comp.nodeB = keepNodeId;
+    }
+
+    this.connections = this.connections.map((c) =>
+      c.nodeId === removeNodeId ? { ...c, nodeId: keepNodeId } : c
+    );
+
+    const removedNode = this.nodes.get(removeNodeId);
+    const keepNode = this.nodes.get(keepNodeId);
+    if (removedNode && keepNode) {
+      removedNode.connections.forEach((c) => keepNode.connections.push(c));
+    }
+    this.nodes.delete(removeNodeId);
+  }
+
   reset() {
     this.components.clear();
     this.connections = [];
@@ -451,5 +655,11 @@ if (typeof module !== 'undefined' && module.exports) {
     Wire,
     LogicGate,
     Circuit,
+    Capacitor,
+    Inductor,
+    Diode,
+    Transistor,
+    Transformer,
+    Potentiometer,
   };
 }
