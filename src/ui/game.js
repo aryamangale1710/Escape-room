@@ -359,8 +359,8 @@ class GameUI {
       label = `1:${component.getTurnsRatio()}`;
     } else if (component.type === ComponentType.POTENTIOMETER) {
       label = `${component.getResistance().toFixed(0)}Ω`;
-    } else if (component.type === ComponentType.DIODE) {
-      label = component.isForwardBiased ? (component.isForwardBiased() ? 'Fwd' : 'Rev') : 'Diode';
+    } else if (component instanceof Diode) {
+      label = component.isForwardBiased() ? 'Fwd' : 'Rev';
     }
 
     el.innerHTML = `
@@ -389,15 +389,15 @@ class GameUI {
         el.classList.toggle('active', component.isActive());
         this.updateStatus(component.isActive() ? 'Switch closed' : 'Switch opened');
       } else if (component instanceof Diode) {
-        const fwd = component.toggle();
-        el.querySelector('.comp-label').textContent = fwd ? 'Fwd' : 'Rev';
-        el.classList.toggle('active', fwd);
-        this.updateStatus(fwd ? 'Diode: forward biased' : 'Diode: reverse biased');
+        const isForwardBiased = component.toggle();
+        el.querySelector('.comp-label').textContent = isForwardBiased ? 'Fwd' : 'Rev';
+        el.classList.toggle('active', isForwardBiased);
+        this.updateStatus(isForwardBiased ? 'Diode: forward biased' : 'Diode: reverse biased');
       } else if (component instanceof Transistor) {
-        const on = component.toggle();
-        el.querySelector('.comp-label').textContent = on ? 'ON' : 'OFF';
-        el.classList.toggle('active', on);
-        this.updateStatus(on ? 'Transistor: conducting (ON)' : 'Transistor: cutoff (OFF)');
+        const isConducting = component.toggle();
+        el.querySelector('.comp-label').textContent = isConducting ? 'ON' : 'OFF';
+        el.classList.toggle('active', isConducting);
+        this.updateStatus(isConducting ? 'Transistor: conducting (ON)' : 'Transistor: cutoff (OFF)');
       }
     });
 

@@ -35,9 +35,6 @@ const Difficulty = Object.freeze({
 /**
  * Level definitions for the game.
  */
-/**
- * Level definitions for the game.
- */
 const LEVELS = [
   // ===== Beginner Levels (1-3) =====
   {

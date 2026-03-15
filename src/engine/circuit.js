@@ -625,7 +625,11 @@ class Circuit {
 
     // Capacitors with very high resistance effectively open the DC path
     if (result.totalResistance >= 1e5) {
-      result.errors.push('Circuit appears open: capacitor is blocking DC current');
+      const hasCapacitor = otherComponents.some((c) => c instanceof Capacitor);
+      const msg = hasCapacitor
+        ? 'Circuit appears open: capacitor is blocking DC current'
+        : 'Circuit appears open: very high resistance detected';
+      result.errors.push(msg);
       this._resetComponents(otherComponents);
       return result;
     }
