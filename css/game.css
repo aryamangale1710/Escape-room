@@ -513,6 +513,29 @@ body {
   margin-bottom: 1rem;
 }
 
+.modal .score-breakdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.modal .score-breakdown-row {
+  color: var(--text-secondary);
+}
+
+.modal .score-penalty {
+  color: var(--accent-red);
+  font-weight: 600;
+}
+
+.modal .score-bonus {
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
 /* ===== Placed Component on Board ===== */
 .placed-component {
   position: absolute;

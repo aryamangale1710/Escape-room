@@ -22,6 +22,12 @@ const _Transformer = (typeof Transformer !== 'undefined') ? Transformer : engine
 const _Potentiometer = (typeof Potentiometer !== 'undefined') ? Potentiometer : engineModule.Potentiometer;
 const _LogicGate = (typeof LogicGate !== 'undefined') ? LogicGate : engineModule.LogicGate;
 const _Circuit = (typeof Circuit !== 'undefined') ? Circuit : engineModule.Circuit;
+const _Capacitor = (typeof Capacitor !== 'undefined') ? Capacitor : engineModule.Capacitor;
+const _Inductor = (typeof Inductor !== 'undefined') ? Inductor : engineModule.Inductor;
+const _Diode = (typeof Diode !== 'undefined') ? Diode : engineModule.Diode;
+const _Transistor = (typeof Transistor !== 'undefined') ? Transistor : engineModule.Transistor;
+const _Transformer = (typeof Transformer !== 'undefined') ? Transformer : engineModule.Transformer;
+const _Potentiometer = (typeof Potentiometer !== 'undefined') ? Potentiometer : engineModule.Potentiometer;
 
 /**
  * Level difficulty tiers.
@@ -476,15 +482,20 @@ class ScoreTracker {
 
     let score = maxScore;
 
-    // Deduct for extra attempts (first attempt is free)
-    score -= Math.max(0, (attempts - 1) * 10);
+    // Deduct for extra attempts (first attempt is free); stored as negative for display
+    const extraAttempts = Math.max(0, attempts - 1);
+    const attemptDeduction = extraAttempts * 10;
+    score -= attemptDeduction;
 
-    // Deduct for hints used
-    score -= hints * 15;
+    // Deduct for hints used; stored as negative for display
+    const hintDeduction = hints * 15;
+    score -= hintDeduction;
 
     // Time bonus
+    let timeBonusEarned = 0;
     if (timeElapsed < timeBonus) {
-      score += Math.floor((timeBonus - timeElapsed) / timeBonus * 50);
+      timeBonusEarned = Math.floor((timeBonus - timeElapsed) / timeBonus * 50);
+      score += timeBonusEarned;
     }
 
     score = Math.max(0, score);
@@ -501,7 +512,19 @@ class ScoreTracker {
     this.totalScore += score;
     this.completedLevels.add(levelId);
 
-    return { score, stars, totalScore: this.totalScore };
+    return {
+      score,
+      stars,
+      totalScore: this.totalScore,
+      breakdown: {
+        base: maxScore,
+        attemptPenalty: extraAttempts > 0 ? -attemptDeduction : 0,
+        hintPenalty: hints > 0 ? -hintDeduction : 0,
+        timeBonus: timeBonusEarned,
+        extraAttempts,
+        hints,
+      },
+    };
   }
 
   getProgress() {

@@ -19,6 +19,12 @@ const {
   Potentiometer,
   LogicGate,
   Circuit,
+  Capacitor,
+  Inductor,
+  Diode,
+  Transistor,
+  Transformer,
+  Potentiometer,
 } = require('../src/engine/circuit');
 
 const {

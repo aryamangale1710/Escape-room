@@ -21,6 +21,11 @@ class GameUI {
     this.elapsedTime = 0;
     this.nextComponentId = 0;
 
+    // Wire drawing state
+    this.wireStart = null;       // { compId, terminal, element }
+    this.drawnWires = [];        // [{ comp1Id, terminal1, comp2Id, terminal2 }]
+    this.wirePreviewLine = null; // SVG line element for preview
+
     this.init();
   }
 
@@ -102,6 +107,14 @@ class GameUI {
 
       grid.appendChild(card);
     });
+
+    // Update total score display
+    const totalScoreEl = document.getElementById('total-score-display');
+    if (totalScoreEl) {
+      const progress = this.levelManager.getProgress();
+      const total = progress.totalScore || 0;
+      totalScoreEl.textContent = total > 0 ? `Total Score: ${total}` : '';
+    }
   }
 
   bindLevelSelect() {
@@ -137,6 +150,9 @@ class GameUI {
     this.drawnWires = [];
     this.elapsedTime = 0;
     this.nextComponentId = 0;
+    this.wireStart = null;
+    this.drawnWires = [];
+    this.wirePreviewLine = null;
 
     // Clear circuit board and wire layer BEFORE loading preplaced components
     this.clearBoard();
@@ -170,6 +186,7 @@ class GameUI {
     // Load preplaced components (board already cleared above)
     if (level.preplacedComponents && level.preplacedComponents.length > 0) {
       this.loadPreplacedComponents(level.preplacedComponents);
+      this.drawPreplacedWires();
     }
 
     // Hide hint
@@ -372,6 +389,7 @@ class GameUI {
 
     // Click to select
     el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('terminal')) return;
       e.stopPropagation();
       this.selectComponent(component.id, el);
     });
@@ -419,6 +437,16 @@ class GameUI {
     const board = document.querySelector('.circuit-board');
     if (!board) return;
     board.querySelectorAll('.placed-component').forEach((el) => el.remove());
+
+    // Clear wire SVG overlay
+    const svg = board.querySelector('.wire-svg');
+    if (svg) {
+      svg.querySelectorAll('line').forEach((l) => l.remove());
+    }
+    this.drawnWires = [];
+    this.wireStart = null;
+    this.wirePreviewLine = null;
+    board.classList.remove('wire-drawing-mode');
   }
 
   clearWireLayer() {
@@ -446,6 +474,7 @@ class GameUI {
       const boardRect = board.getBoundingClientRect();
       el.style.left = `${ev.clientX - boardRect.left - this.dragOffset.x}px`;
       el.style.top = `${ev.clientY - boardRect.top - this.dragOffset.y}px`;
+      this.redrawAllWires();
     };
 
     const onUp = () => {
@@ -461,6 +490,13 @@ class GameUI {
     // Drop zone
     const board = document.querySelector('.circuit-board');
     if (board) {
+      // Create SVG overlay for wires (once)
+      if (!board.querySelector('.wire-svg')) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add('wire-svg');
+        board.appendChild(svg);
+      }
+
       board.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
@@ -802,6 +838,33 @@ class GameUI {
     modal.querySelector('.stars-display').textContent = starsStr;
     modal.querySelector('.score-text').textContent = `Score: +${result.score || 0}`;
 
+    // Show score breakdown with penalty/bonus detail
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl && result.breakdown) {
+      const bd = result.breakdown;
+      let html = `<div class="score-breakdown-row">Base: ${bd.base}</div>`;
+      if (bd.attemptPenalty < 0) {
+        const label = bd.extraAttempts === 1 ? '1 retry' : `${bd.extraAttempts} retries`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.attemptPenalty} (${label})</div>`;
+      }
+      if (bd.hintPenalty < 0) {
+        const label = bd.hints === 1 ? '1 hint' : `${bd.hints} hints`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.hintPenalty} (${label})</div>`;
+      }
+      if (bd.timeBonus > 0) {
+        html += `<div class="score-breakdown-row score-bonus">+${bd.timeBonus} (speed bonus)</div>`;
+      }
+      breakdownEl.innerHTML = html;
+    } else if (breakdownEl) {
+      breakdownEl.innerHTML = '';
+    }
+
+    // Update top-bar score display
+    const scoreDisplay = document.querySelector('.score-display');
+    if (scoreDisplay && result.totalScore != null) {
+      scoreDisplay.textContent = `Score: ${result.totalScore}`;
+    }
+
     document.getElementById('btn-next-level').style.display = 'inline-block';
     document.getElementById('btn-retry').style.display = 'none';
 
@@ -819,6 +882,9 @@ class GameUI {
     modal.querySelector('.modal-message').textContent = result.message;
     modal.querySelector('.stars-display').textContent = '';
     modal.querySelector('.score-text').textContent = '';
+
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl) breakdownEl.innerHTML = '';
 
     document.getElementById('btn-next-level').style.display = 'none';
     document.getElementById('btn-retry').style.display = 'inline-block';

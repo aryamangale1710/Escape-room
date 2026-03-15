@@ -706,6 +706,79 @@ class Circuit {
     }
   }
 
+  /**
+   * Validate circuit topology via BFS:
+   * checks all components have nodes assigned and that the external circuit
+   * forms a complete path from battery (+) to battery (-).
+   */
+  validateCircuitTopology() {
+    const batteries = [...this.components.values()].filter(
+      (c) => c.type === ComponentType.BATTERY
+    );
+    if (batteries.length === 0) return false;
+
+    const battery = batteries[0];
+    if (battery.nodeA === null || battery.nodeB === null) return false;
+    if (battery.nodeA === battery.nodeB) return false;
+
+    // Every component must have both terminals wired
+    for (const [, comp] of this.components) {
+      if (comp.nodeA === null || comp.nodeB === null) return false;
+    }
+
+    // BFS from battery positive terminal through external components only
+    const visited = new Set();
+    const queue = [battery.nodeA];
+    visited.add(battery.nodeA);
+
+    while (queue.length > 0) {
+      const currentNode = queue.shift();
+      if (currentNode === battery.nodeB) return true;
+
+      for (const [, comp] of this.components) {
+        if (comp === battery) continue; // don't traverse through the source
+
+        let nextNode = null;
+        if (comp.nodeA === currentNode && comp.nodeB && !visited.has(comp.nodeB)) {
+          nextNode = comp.nodeB;
+        } else if (comp.nodeB === currentNode && comp.nodeA && !visited.has(comp.nodeA)) {
+          nextNode = comp.nodeA;
+        }
+
+        if (nextNode !== null) {
+          visited.add(nextNode);
+          queue.push(nextNode);
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Merge two nodes: all references to removeNodeId become keepNodeId.
+   * Used when a wire connects two previously separate terminals.
+   */
+  mergeNodes(keepNodeId, removeNodeId) {
+    if (keepNodeId === removeNodeId) return;
+
+    for (const [, comp] of this.components) {
+      if (comp.nodeA === removeNodeId) comp.nodeA = keepNodeId;
+      if (comp.nodeB === removeNodeId) comp.nodeB = keepNodeId;
+    }
+
+    this.connections = this.connections.map((c) =>
+      c.nodeId === removeNodeId ? { ...c, nodeId: keepNodeId } : c
+    );
+
+    const removedNode = this.nodes.get(removeNodeId);
+    const keepNode = this.nodes.get(keepNodeId);
+    if (removedNode && keepNode) {
+      removedNode.connections.forEach((c) => keepNode.connections.push(c));
+    }
+    this.nodes.delete(removeNodeId);
+  }
+
   reset() {
     this.components.clear();
     this.connections = [];
@@ -740,5 +813,11 @@ if (typeof module !== 'undefined' && module.exports) {
     Potentiometer,
     LogicGate,
     Circuit,
+    Capacitor,
+    Inductor,
+    Diode,
+    Transistor,
+    Transformer,
+    Potentiometer,
   };
 }
