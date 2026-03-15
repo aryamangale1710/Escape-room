@@ -18,6 +18,11 @@ class GameUI {
     this.elapsedTime = 0;
     this.nextComponentId = 0;
 
+    // Wire drawing state
+    this.wireStart = null;       // { compId, terminal, element }
+    this.drawnWires = [];        // [{ comp1Id, terminal1, comp2Id, terminal2 }]
+    this.wirePreviewLine = null; // SVG line element for preview
+
     this.init();
   }
 
@@ -99,6 +104,14 @@ class GameUI {
 
       grid.appendChild(card);
     });
+
+    // Update total score display
+    const totalScoreEl = document.getElementById('total-score-display');
+    if (totalScoreEl) {
+      const progress = this.levelManager.getProgress();
+      const total = progress.totalScore || 0;
+      totalScoreEl.textContent = total > 0 ? `Total Score: ${total}` : '';
+    }
   }
 
   bindLevelSelect() {
@@ -131,6 +144,9 @@ class GameUI {
     this.multimeterActive = false;
     this.elapsedTime = 0;
     this.nextComponentId = 0;
+    this.wireStart = null;
+    this.drawnWires = [];
+    this.wirePreviewLine = null;
 
     // Update UI text
     const levelInfo = document.querySelector('.level-info');
@@ -157,13 +173,13 @@ class GameUI {
     // Render available components
     this.renderComponentPalette(level.availableComponents);
 
-    // Load preplaced components
+    // Clear circuit board first, then load preplaced components
+    this.clearBoard();
+
     if (level.preplacedComponents && level.preplacedComponents.length > 0) {
       this.loadPreplacedComponents(level.preplacedComponents);
+      this.drawPreplacedWires();
     }
-
-    // Clear circuit board
-    this.clearBoard();
 
     // Hide hint
     const hintBox = document.querySelector('.hint-box');
@@ -194,6 +210,12 @@ class GameUI {
       [ComponentType.AND_GATE]: '&',
       [ComponentType.OR_GATE]: '≥1',
       [ComponentType.NOT_GATE]: '¬',
+      [ComponentType.CAPACITOR]: '⊣⊢',
+      [ComponentType.INDUCTOR]: '⌇',
+      [ComponentType.DIODE]: '▷|',
+      [ComponentType.TRANSISTOR]: 'Ƭ',
+      [ComponentType.TRANSFORMER]: '⚡',
+      [ComponentType.POTENTIOMETER]: '⊸',
     };
 
     const names = {
@@ -205,6 +227,12 @@ class GameUI {
       [ComponentType.AND_GATE]: 'AND Gate',
       [ComponentType.OR_GATE]: 'OR Gate',
       [ComponentType.NOT_GATE]: 'NOT Gate',
+      [ComponentType.CAPACITOR]: 'Capacitor',
+      [ComponentType.INDUCTOR]: 'Inductor',
+      [ComponentType.DIODE]: 'Diode',
+      [ComponentType.TRANSISTOR]: 'Transistor',
+      [ComponentType.TRANSFORMER]: 'Transformer',
+      [ComponentType.POTENTIOMETER]: 'Potentiometer',
     };
 
     components.forEach((comp, index) => {
@@ -271,6 +299,18 @@ class GameUI {
         return new Switch(id, props.closed || false);
       case ComponentType.WIRE:
         return new Wire(id);
+      case ComponentType.CAPACITOR:
+        return new Capacitor(id, props.capacitance || 0.0001);
+      case ComponentType.INDUCTOR:
+        return new Inductor(id, props.inductance || 0.001);
+      case ComponentType.DIODE:
+        return new Diode(id, props.forwardVoltage || 0.7);
+      case ComponentType.TRANSISTOR:
+        return new Transistor(id, props.transistorType || 'NPN', props.gain || 100);
+      case ComponentType.TRANSFORMER:
+        return new Transformer(id, props.turnsRatio || 1);
+      case ComponentType.POTENTIOMETER:
+        return new Potentiometer(id, props.maxResistance || 1000, props.position || 0.5);
       case ComponentType.AND_GATE:
       case ComponentType.OR_GATE:
       case ComponentType.NOT_GATE:
@@ -293,6 +333,12 @@ class GameUI {
       [ComponentType.AND_GATE]: '&',
       [ComponentType.OR_GATE]: '≥1',
       [ComponentType.NOT_GATE]: '¬',
+      [ComponentType.CAPACITOR]: '⊣⊢',
+      [ComponentType.INDUCTOR]: '⌇',
+      [ComponentType.DIODE]: '▷|',
+      [ComponentType.TRANSISTOR]: 'Ƭ',
+      [ComponentType.TRANSFORMER]: '⚡',
+      [ComponentType.POTENTIOMETER]: '⊸',
     };
 
     const el = document.createElement('div');
@@ -306,15 +352,30 @@ class GameUI {
       label = `${component.getResistance()}Ω`;
     } else if (component.type === ComponentType.BATTERY) {
       label = `${component.getVoltage()}V`;
+    } else if (component.type === ComponentType.CAPACITOR) {
+      label = `${(component.getCapacitance() * 1e6).toFixed(0)}μF`;
+    } else if (component.type === ComponentType.INDUCTOR) {
+      label = `${(component.getInductance() * 1000).toFixed(1)}mH`;
+    } else if (component.type === ComponentType.DIODE) {
+      label = `${component.getForwardVoltage()}V`;
+    } else if (component.type === ComponentType.TRANSISTOR) {
+      label = component.getType();
+    } else if (component.type === ComponentType.TRANSFORMER) {
+      label = `${component.getTurnsRatio()}:1`;
+    } else if (component.type === ComponentType.POTENTIOMETER) {
+      label = `${component.getResistance().toFixed(0)}Ω`;
     }
 
     el.innerHTML = `
+      <div class="terminal terminal-a" data-terminal="A" title="Terminal A"></div>
       <div class="comp-icon">${icons[component.type] || '?'}</div>
       <div class="comp-label">${label}</div>
+      <div class="terminal terminal-b" data-terminal="B" title="Terminal B"></div>
     `;
 
     // Click to select
     el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('terminal')) return;
       e.stopPropagation();
       this.selectComponent(component.id, el);
     });
@@ -322,15 +383,22 @@ class GameUI {
     // Drag to move
     el.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
+      if (e.target.classList.contains('terminal')) return;
       this.startDragPlaced(el, e);
     });
 
-    // Double-click to toggle switch
+    // Double-click to toggle switch or transistor
     if (component.type === ComponentType.SWITCH) {
       el.addEventListener('dblclick', () => {
         component.toggle();
         el.classList.toggle('active', component.isActive());
         this.updateStatus(component.isActive() ? 'Switch closed' : 'Switch opened');
+      });
+    } else if (component.type === ComponentType.TRANSISTOR) {
+      el.addEventListener('dblclick', () => {
+        component.toggle();
+        el.classList.toggle('active', component.isActive());
+        this.updateStatus(component.isActive() ? 'Transistor ON (base activated)' : 'Transistor OFF');
       });
     }
 
@@ -342,6 +410,16 @@ class GameUI {
     const board = document.querySelector('.circuit-board');
     if (!board) return;
     board.querySelectorAll('.placed-component').forEach((el) => el.remove());
+
+    // Clear wire SVG overlay
+    const svg = board.querySelector('.wire-svg');
+    if (svg) {
+      svg.querySelectorAll('line').forEach((l) => l.remove());
+    }
+    this.drawnWires = [];
+    this.wireStart = null;
+    this.wirePreviewLine = null;
+    board.classList.remove('wire-drawing-mode');
   }
 
   selectComponent(componentId, element) {
@@ -363,6 +441,7 @@ class GameUI {
       const boardRect = board.getBoundingClientRect();
       el.style.left = `${ev.clientX - boardRect.left - this.dragOffset.x}px`;
       el.style.top = `${ev.clientY - boardRect.top - this.dragOffset.y}px`;
+      this.redrawAllWires();
     };
 
     const onUp = () => {
@@ -378,6 +457,13 @@ class GameUI {
     // Drop zone
     const board = document.querySelector('.circuit-board');
     if (board) {
+      // Create SVG overlay for wires (once)
+      if (!board.querySelector('.wire-svg')) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add('wire-svg');
+        board.appendChild(svg);
+      }
+
       board.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
@@ -395,19 +481,45 @@ class GameUI {
           const comp = this.createComponentInstance(data.type, id, data.props || {});
           if (comp) {
             this.circuit.addComponent(comp);
-
-            // Auto-connect nodes
-            const nodeA = this.circuit.createNode();
-            const nodeB = this.circuit.createNode();
-            this.circuit.connect(id, 'A', nodeA);
-            this.circuit.connect(id, 'B', nodeB);
-
+            // No auto-connect: player must draw wires to connect terminals
             this.addComponentToBoard(comp, x, y);
-            this.updateStatus(`Added ${data.type}`);
+            this.updateStatus(`Added ${data.type} — click a terminal (●) to draw a wire`);
           }
         } catch (err) {
           console.warn('Invalid drop data:', err.message);
         }
+      });
+
+      // Wire terminal click (delegated to board)
+      board.addEventListener('click', (e) => {
+        const terminal = e.target.closest('.terminal');
+        if (!terminal) {
+          // Click on empty board area cancels wire drawing
+          if (this.wireStart) this.cancelWireDraw();
+          return;
+        }
+        e.stopPropagation();
+        const compEl = terminal.closest('.placed-component');
+        if (!compEl) return;
+        const compId = compEl.dataset.componentId;
+        const term = terminal.dataset.terminal;
+
+        if (!this.wireStart) {
+          this.startWireDraw(compId, term, terminal);
+        } else if (compId === this.wireStart.compId && term === this.wireStart.terminal) {
+          // Clicked the same terminal — cancel
+          this.cancelWireDraw();
+        } else {
+          this.endWireDraw(compId, term, terminal);
+        }
+      });
+
+      // Update wire preview line on mouse move
+      board.addEventListener('mousemove', (e) => {
+        if (!this.wireStart || !this.wirePreviewLine) return;
+        const boardRect = board.getBoundingClientRect();
+        this.wirePreviewLine.setAttribute('x2', e.clientX - boardRect.left);
+        this.wirePreviewLine.setAttribute('y2', e.clientY - boardRect.top);
       });
     }
 
@@ -472,6 +584,155 @@ class GameUI {
         this.stopTimer();
         this.showLevelSelect();
       });
+    }
+  }
+
+  // ===== Wire Drawing =====
+
+  getTerminalPosition(compId, terminal) {
+    const board = document.querySelector('.circuit-board');
+    if (!board) return null;
+    const entry = this.placedComponents.find((e) => e.component.id === compId);
+    if (!entry) return null;
+    const boardRect = board.getBoundingClientRect();
+    const termEl = entry.element.querySelector(`[data-terminal="${terminal}"]`);
+    if (!termEl) return null;
+    const rect = termEl.getBoundingClientRect();
+    return {
+      x: rect.left - boardRect.left + rect.width / 2,
+      y: rect.top - boardRect.top + rect.height / 2,
+    };
+  }
+
+  drawWireLine(pos1, pos2, options = {}) {
+    const board = document.querySelector('.circuit-board');
+    const svg = board && board.querySelector('.wire-svg');
+    if (!svg) return null;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pos1.x);
+    line.setAttribute('y1', pos1.y);
+    line.setAttribute('x2', pos2.x);
+    line.setAttribute('y2', pos2.y);
+    line.setAttribute('stroke', options.color || '#ff9800');
+    line.setAttribute('stroke-width', options.width || '3');
+    line.setAttribute('stroke-linecap', 'round');
+    if (options.dashed) line.setAttribute('stroke-dasharray', '6,4');
+    if (options.id) line.id = options.id;
+    svg.appendChild(line);
+    return line;
+  }
+
+  redrawAllWires() {
+    const board = document.querySelector('.circuit-board');
+    const svg = board && board.querySelector('.wire-svg');
+    if (!svg) return;
+    // Remove only permanent wire lines (keep preview)
+    svg.querySelectorAll('line:not(#wire-preview)').forEach((l) => l.remove());
+    this.drawnWires.forEach((wire) => {
+      const pos1 = this.getTerminalPosition(wire.comp1Id, wire.terminal1);
+      const pos2 = this.getTerminalPosition(wire.comp2Id, wire.terminal2);
+      if (pos1 && pos2) this.drawWireLine(pos1, pos2);
+    });
+  }
+
+  drawPreplacedWires() {
+    const board = document.querySelector('.circuit-board');
+    const processed = new Set();
+    for (const [, comp1] of this.circuit.components) {
+      for (const [, comp2] of this.circuit.components) {
+        if (comp1.id === comp2.id) continue;
+        const pairKey = [comp1.id, comp2.id].sort().join('|');
+        if (processed.has(pairKey)) continue;
+        const t1 = [{ t: 'A', n: comp1.nodeA }, { t: 'B', n: comp1.nodeB }];
+        const t2 = [{ t: 'A', n: comp2.nodeA }, { t: 'B', n: comp2.nodeB }];
+        for (const a of t1) {
+          for (const b of t2) {
+            if (a.n && b.n && a.n === b.n) {
+              this.drawnWires.push({ comp1Id: comp1.id, terminal1: a.t, comp2Id: comp2.id, terminal2: b.t });
+              processed.add(pairKey);
+              // Mark terminals visually as connected
+              if (board) {
+                const el1 = board.querySelector(`[data-component-id="${comp1.id}"] [data-terminal="${a.t}"]`);
+                const el2 = board.querySelector(`[data-component-id="${comp2.id}"] [data-terminal="${b.t}"]`);
+                if (el1) el1.classList.add('connected');
+                if (el2) el2.classList.add('connected');
+              }
+            }
+          }
+        }
+      }
+    }
+    this.redrawAllWires();
+  }
+
+  startWireDraw(compId, terminal, terminalEl) {
+    this.wireStart = { compId, terminal, element: terminalEl };
+    terminalEl.classList.add('wire-start');
+    const board = document.querySelector('.circuit-board');
+    if (board) board.classList.add('wire-drawing-mode');
+    const pos = this.getTerminalPosition(compId, terminal);
+    if (pos) {
+      this.wirePreviewLine = this.drawWireLine(pos, pos, { color: '#00d4ff', dashed: true, id: 'wire-preview' });
+    }
+    this.updateStatus('Click another terminal to complete the wire — or click here to cancel');
+  }
+
+  endWireDraw(compId, terminal, terminalEl) {
+    if (!this.wireStart) return;
+    const { compId: startId, terminal: startTerm, element: startEl } = this.wireStart;
+
+    // Connect in circuit engine
+    this.connectTerminals(startId, startTerm, compId, terminal);
+
+    // Store and draw permanent wire
+    this.drawnWires.push({ comp1Id: startId, terminal1: startTerm, comp2Id: compId, terminal2: terminal });
+    const pos1 = this.getTerminalPosition(startId, startTerm);
+    const pos2 = this.getTerminalPosition(compId, terminal);
+    if (pos1 && pos2) this.drawWireLine(pos1, pos2);
+
+    // Mark terminals as connected
+    startEl.classList.add('connected');
+    terminalEl.classList.add('connected');
+
+    this.cancelWireDraw();
+    this.updateStatus('Wire connected! Keep building or click "Check Circuit".');
+  }
+
+  cancelWireDraw() {
+    if (this.wireStart && this.wireStart.element) {
+      this.wireStart.element.classList.remove('wire-start');
+    }
+    if (this.wirePreviewLine) {
+      this.wirePreviewLine.remove();
+      this.wirePreviewLine = null;
+    }
+    this.wireStart = null;
+    const board = document.querySelector('.circuit-board');
+    if (board) board.classList.remove('wire-drawing-mode');
+  }
+
+  connectTerminals(comp1Id, terminal1, comp2Id, terminal2) {
+    const comp1 = this.circuit.getComponent(comp1Id);
+    const comp2 = this.circuit.getComponent(comp2Id);
+    if (!comp1 || !comp2) return;
+
+    const node1 = terminal1 === 'A' ? comp1.nodeA : comp1.nodeB;
+    const node2 = terminal2 === 'A' ? comp2.nodeA : comp2.nodeB;
+
+    if (node1 && node2) {
+      // Both have nodes — merge removeNode (node2) into keepNode (node1)
+      this.circuit.mergeNodes(node1, node2);
+    } else if (node1 && !node2) {
+      // node2's terminal inherits node1
+      this.circuit.connect(comp2Id, terminal2, node1);
+    } else if (!node1 && node2) {
+      // node1's terminal inherits node2
+      this.circuit.connect(comp1Id, terminal1, node2);
+    } else {
+      // Neither has a node yet — create a shared node
+      const newNode = this.circuit.createNode();
+      this.circuit.connect(comp1Id, terminal1, newNode);
+      this.circuit.connect(comp2Id, terminal2, newNode);
     }
   }
 
@@ -607,6 +868,33 @@ class GameUI {
     modal.querySelector('.stars-display').textContent = starsStr;
     modal.querySelector('.score-text').textContent = `Score: +${result.score || 0}`;
 
+    // Show score breakdown with penalty/bonus detail
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl && result.breakdown) {
+      const bd = result.breakdown;
+      let html = `<div class="score-breakdown-row">Base: ${bd.base}</div>`;
+      if (bd.attemptPenalty < 0) {
+        const label = bd.extraAttempts === 1 ? '1 retry' : `${bd.extraAttempts} retries`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.attemptPenalty} (${label})</div>`;
+      }
+      if (bd.hintPenalty < 0) {
+        const label = bd.hints === 1 ? '1 hint' : `${bd.hints} hints`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.hintPenalty} (${label})</div>`;
+      }
+      if (bd.timeBonus > 0) {
+        html += `<div class="score-breakdown-row score-bonus">+${bd.timeBonus} (speed bonus)</div>`;
+      }
+      breakdownEl.innerHTML = html;
+    } else if (breakdownEl) {
+      breakdownEl.innerHTML = '';
+    }
+
+    // Update top-bar score display
+    const scoreDisplay = document.querySelector('.score-display');
+    if (scoreDisplay && result.totalScore != null) {
+      scoreDisplay.textContent = `Score: ${result.totalScore}`;
+    }
+
     document.getElementById('btn-next-level').style.display = 'inline-block';
     document.getElementById('btn-retry').style.display = 'none';
 
@@ -624,6 +912,9 @@ class GameUI {
     modal.querySelector('.modal-message').textContent = result.message;
     modal.querySelector('.stars-display').textContent = '';
     modal.querySelector('.score-text').textContent = '';
+
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl) breakdownEl.innerHTML = '';
 
     document.getElementById('btn-next-level').style.display = 'none';
     document.getElementById('btn-retry').style.display = 'inline-block';
