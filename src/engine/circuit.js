@@ -337,16 +337,12 @@ class Circuit {
     result.totalVoltage = batteries.reduce((sum, b) => sum + b.getVoltage(), 0);
 
     // Calculate total resistance from non-battery components
-    const resistances = otherComponents
-      .filter((c) => c.type !== ComponentType.WIRE)
-      .map((c) => c.getResistance());
+    const resistiveComponents = otherComponents.filter((c) => c.type !== ComponentType.WIRE);
 
-    if (resistances.length === 0) {
+    if (resistiveComponents.length === 0) {
       result.totalResistance = 0.001;
     } else {
-      result.totalResistance = this.calculateSeriesResistance(
-        otherComponents.filter((c) => c.type !== ComponentType.WIRE)
-      );
+      result.totalResistance = this.calculateSeriesResistance(resistiveComponents);
     }
 
     // Check for short circuit

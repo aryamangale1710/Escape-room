@@ -406,7 +406,7 @@ class GameUI {
             this.updateStatus(`Added ${data.type}`);
           }
         } catch (err) {
-          // Ignore invalid drops
+          console.warn('Invalid drop data:', err.message);
         }
       });
     }

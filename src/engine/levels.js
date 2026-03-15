@@ -329,7 +329,7 @@ const LEVELS = [
     description: 'Solve the ultimate multi-stage puzzle to escape the laboratory!',
     story: 'The final door has three locks. Each requires a different electronics skill to open.',
     objectives: [
-      'Lock 1: Build a circuit with correct current (20mA)',
+      'Lock 1: Build a circuit with correct current (~10mA)',
       'Lock 2: Use series resistors totaling 700Ω',
       'Lock 3: Logic gate: (A AND B) = true',
     ],
