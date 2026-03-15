@@ -104,6 +104,14 @@ class GameUI {
 
       grid.appendChild(card);
     });
+
+    // Update total score display
+    const totalScoreEl = document.getElementById('total-score-display');
+    if (totalScoreEl) {
+      const progress = this.levelManager.getProgress();
+      const total = progress.totalScore || 0;
+      totalScoreEl.textContent = total > 0 ? `Total Score: ${total}` : '';
+    }
   }
 
   bindLevelSelect() {
@@ -860,6 +868,33 @@ class GameUI {
     modal.querySelector('.stars-display').textContent = starsStr;
     modal.querySelector('.score-text').textContent = `Score: +${result.score || 0}`;
 
+    // Show score breakdown with penalty/bonus detail
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl && result.breakdown) {
+      const bd = result.breakdown;
+      let html = `<div class="score-breakdown-row">Base: ${bd.base}</div>`;
+      if (bd.attemptPenalty < 0) {
+        const label = bd.extraAttempts === 1 ? '1 retry' : `${bd.extraAttempts} retries`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.attemptPenalty} (${label})</div>`;
+      }
+      if (bd.hintPenalty < 0) {
+        const label = bd.hints === 1 ? '1 hint' : `${bd.hints} hints`;
+        html += `<div class="score-breakdown-row score-penalty">${bd.hintPenalty} (${label})</div>`;
+      }
+      if (bd.timeBonus > 0) {
+        html += `<div class="score-breakdown-row score-bonus">+${bd.timeBonus} (speed bonus)</div>`;
+      }
+      breakdownEl.innerHTML = html;
+    } else if (breakdownEl) {
+      breakdownEl.innerHTML = '';
+    }
+
+    // Update top-bar score display
+    const scoreDisplay = document.querySelector('.score-display');
+    if (scoreDisplay && result.totalScore != null) {
+      scoreDisplay.textContent = `Score: ${result.totalScore}`;
+    }
+
     document.getElementById('btn-next-level').style.display = 'inline-block';
     document.getElementById('btn-retry').style.display = 'none';
 
@@ -877,6 +912,9 @@ class GameUI {
     modal.querySelector('.modal-message').textContent = result.message;
     modal.querySelector('.stars-display').textContent = '';
     modal.querySelector('.score-text').textContent = '';
+
+    const breakdownEl = modal.querySelector('.score-breakdown');
+    if (breakdownEl) breakdownEl.innerHTML = '';
 
     document.getElementById('btn-next-level').style.display = 'none';
     document.getElementById('btn-retry').style.display = 'inline-block';
