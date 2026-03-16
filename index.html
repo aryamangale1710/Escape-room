@@ -71,55 +71,16 @@
 
       <div class="info-section">
         <h4>📏 Multimeter</h4>
-        <div class="measurement-display">
-          <div id="meter-value" class="value">---</div>
-          <div id="meter-unit" class="unit"></div>
-          <div id="meter-label" class="label">Select a component</div>
-        </div>
-      </div>
-
-      <div class="hint-box" id="hint-box">
-        💡 Hint will appear here
-      </div>
-
-      <div class="action-buttons">
-        <button id="btn-check" class="action-btn check">✓ Check Circuit</button>
-        <button id="btn-hint" class="action-btn hint">💡 Hint</button>
-      </div>
-
-      <div class="info-section">
-        <h4>📝 Description</h4>
-        <p id="desc-text"></p>
-      </div>
-    </div>
-
-    <!-- Bottom Status Bar -->
-    <div class="status-bar">
-      <span class="timer">⏱ 0:00</span>
-      <span>Drag components onto the board, then use 🔌 Wire to connect them</span>
-      <span class="circuit-status">Ready</span>
-    </div>
-  </div>
-
-  <!-- Result Modal -->
-  <div id="result-modal" class="modal-overlay">
-    <div class="modal">
-      <h2>Result</h2>
-      <p class="modal-message"></p>
-      <div class="stars-display"></div>
-      <div class="score-breakdown"></div>
-      <div class="score-text"></div>
-      <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
-        <button id="btn-next-level" class="title-btn primary">Next Room →</button>
-        <button id="btn-retry" class="title-btn">Try Again</button>
-        <button id="btn-modal-levels" class="title-btn">Level Select</button>
+        <div class="measurement-display"></div>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="src/engine/circuit.js"></script>
-  <script src="src/engine/levels.js"></script>
+  <!-- IMPORTANT: Load JavaScript files -->
+  <script src="src/components/component.js"></script>
+  <script src="src/circuit/circuit.js"></script>
+  <script src="src/ui/ui.js"></script>
   <script src="src/ui/game.js"></script>
+  <script src="src/main.js"></script>
 </body>
 </html>
