@@ -22,12 +22,6 @@ const _Transformer = (typeof Transformer !== 'undefined') ? Transformer : engine
 const _Potentiometer = (typeof Potentiometer !== 'undefined') ? Potentiometer : engineModule.Potentiometer;
 const _LogicGate = (typeof LogicGate !== 'undefined') ? LogicGate : engineModule.LogicGate;
 const _Circuit = (typeof Circuit !== 'undefined') ? Circuit : engineModule.Circuit;
-const _Capacitor = (typeof Capacitor !== 'undefined') ? Capacitor : engineModule.Capacitor;
-const _Inductor = (typeof Inductor !== 'undefined') ? Inductor : engineModule.Inductor;
-const _Diode = (typeof Diode !== 'undefined') ? Diode : engineModule.Diode;
-const _Transistor = (typeof Transistor !== 'undefined') ? Transistor : engineModule.Transistor;
-const _Transformer = (typeof Transformer !== 'undefined') ? Transformer : engineModule.Transformer;
-const _Potentiometer = (typeof Potentiometer !== 'undefined') ? Potentiometer : engineModule.Potentiometer;
 
 /**
  * Level difficulty tiers.
