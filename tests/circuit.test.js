@@ -19,12 +19,6 @@ const {
   Potentiometer,
   LogicGate,
   Circuit,
-  Capacitor,
-  Inductor,
-  Diode,
-  Transistor,
-  Transformer,
-  Potentiometer,
 } = require('../src/engine/circuit');
 
 const {
@@ -774,15 +768,14 @@ suite('Level 7 Solution Test (Logic Gate Circuit)', () => {
   circuit.addComponent(d3);
   circuit.addComponent(new LED('led1', 2, 0.02));
 
-  // Wire all in series: b1 → r1 → r2 → r3 → q1 → q2 → d1 → d2 → d3 → led1 → b1
+  // Wire all in series (closed loop): b1 → r1 → r2 → r3 → q1 → q2 → d1 → d2 → d3 → led1 → b1
   const nodes = [];
-  for (let i = 0; i <= 10; i++) nodes.push(circuit.createNode());
+  for (let i = 0; i < 10; i++) nodes.push(circuit.createNode());
   const ids = ['b1', 'r1', 'r2', 'r3', 'q1', 'q2', 'd1', 'd2', 'd3', 'led1'];
   for (let i = 0; i < ids.length; i++) {
     circuit.connect(ids[i], 'A', nodes[i]);
-    circuit.connect(ids[i], 'B', nodes[i + 1]);
+    circuit.connect(ids[i], 'B', nodes[(i + 1) % 10]);
   }
-  circuit.connect('b1', 'B', nodes[10]); // already set, make it share
 
   const result = LEVELS[6].checkSolution(circuit);
   assert(result.passed, 'Level 7 logic gate circuit solution passes');
